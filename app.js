@@ -379,8 +379,17 @@ function completeStep(taskId, stepId) {
   renderCurrentView();
 }
 
+function sortedByPriority(tasks) {
+  return [...tasks].sort((a, b) => {
+    if (a.priority == null && b.priority == null) return 0;
+    if (a.priority == null) return 1;
+    if (b.priority == null) return -1;
+    return a.priority - b.priority;
+  });
+}
+
 function getActiveStep() {
-  for (const task of state.tasks) {
+  for (const task of sortedByPriority(state.tasks)) {
     if (task.completedAt) continue;
     const step = task.steps.find(s => !s.completed);
     if (step) return { task, step };
@@ -457,8 +466,32 @@ function renderToday() {
     `;
   }
 
+  const activeTasks = sortedByPriority(state.tasks.filter(t => !t.completedAt));
+  if (activeTasks.length > 0) {
+    html += `
+      <div class="section-header" style="margin-top:20px">
+        <div class="section-title">Quest Queue</div>
+      </div>
+    `;
+    activeTasks.forEach(t => {
+      const doneCount = t.steps.filter(s => s.completed).length;
+      const total = t.steps.length;
+      const isActive = active && active.task.id === t.id;
+      html += `
+        <div class="today-quest-row${isActive ? ' today-quest-active' : ''}">
+          <div class="priority-badge${t.priority == null ? ' no-priority' : ''}">${t.priority != null ? '#' + t.priority : '—'}</div>
+          <div class="today-quest-info">
+            <div class="today-quest-title">${escHtml(t.title)}</div>
+            <div class="today-quest-meta">${doneCount}/${total} steps</div>
+          </div>
+          ${isActive ? '<div class="today-quest-arrow">▶ Up Next</div>' : ''}
+        </div>
+      `;
+    });
+  }
+
   if (dm) {
-    html += `<div class="card"><div class="card-title">Daily Missions</div>`;
+    html += `<div class="card" style="margin-top:20px"><div class="card-title">Daily Missions</div>`;
     for (const m of dm.missions) {
       const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
       html += `
@@ -573,7 +606,10 @@ function renderQuestCard(task) {
         <div class="quest-diff">${diff.icon}</div>
         <div class="quest-info">
           <div class="quest-title">${escHtml(task.title)}</div>
-          <div class="quest-meta">${diff.label} • ${doneCount}/${total} steps</div>
+          <div class="quest-meta">
+            ${task.priority != null ? `<span class="priority-badge-inline">#${task.priority}</span>` : ''}
+            ${diff.label} • ${doneCount}/${total} steps
+          </div>
         </div>
         ${editBtn}
         <div class="quest-expand-icon">${expanded ? '▲' : '▼'}</div>
@@ -779,7 +815,7 @@ let newQ = { title: '', difficulty: 'quest', steps: [''] };
 function openAddQuest() {
   modalMode = 'add';
   editingTaskId = null;
-  newQ = { title: '', difficulty: 'quest', steps: ['', ''] };
+  newQ = { title: '', difficulty: 'quest', steps: ['', ''], priority: null };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('q-title')?.focus(), 80);
@@ -794,6 +830,7 @@ function openEditQuest(taskId) {
     title: task.title,
     difficulty: task.difficulty,
     steps: task.steps.length > 0 ? task.steps.map(s => s.text) : [''],
+    priority: task.priority != null ? task.priority : null,
   };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -875,6 +912,20 @@ function renderModal() {
     </div>
 
     <div class="form-group">
+      <label class="form-label">Priority # <span style="color:var(--text3);font-weight:400">(optional — lower = tackled first)</span></label>
+      <input
+        id="q-priority"
+        class="form-input priority-input"
+        type="number"
+        min="1"
+        max="99"
+        placeholder="e.g. 1, 2, 3…"
+        value="${newQ.priority != null ? newQ.priority : ''}"
+        oninput="newQ.priority = this.value !== '' ? parseInt(this.value) : null"
+      />
+    </div>
+
+    <div class="form-group">
       <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(min 2)</span></label>
       <div id="steps-list">${stepsHtml}</div>
       <button class="btn-add-step" onclick="addModalStep()">+ Add another step</button>
@@ -922,6 +973,8 @@ function syncModalSteps() {
   });
   const titleEl = document.getElementById('q-title');
   if (titleEl) newQ.title = titleEl.value;
+  const priorityEl = document.getElementById('q-priority');
+  if (priorityEl) newQ.priority = priorityEl.value !== '' ? parseInt(priorityEl.value) : null;
 }
 
 function addModalStep() {
@@ -956,6 +1009,7 @@ function saveQuest() {
     id: uid(),
     title: newQ.title.trim(),
     difficulty: newQ.difficulty,
+    priority: newQ.priority != null ? newQ.priority : null,
     createdAt: todayStr(),
     completedAt: null,
     _expanded: false,
@@ -987,6 +1041,7 @@ function saveEditQuest() {
 
   task.title = newQ.title.trim();
   task.difficulty = newQ.difficulty;
+  task.priority = newQ.priority != null ? newQ.priority : null;
 
   // Preserve completed state for steps that match by text
   task.steps = validSteps.map((text, i) => {
