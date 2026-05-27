@@ -51,6 +51,7 @@ let state = {
   focusTaskId: null,
   focusStepId: null,
   showCompleted: false,
+  questSort: 'created',
 };
 
 // ─── PERSISTENCE ────────────────────────────────────
@@ -67,6 +68,7 @@ function load() {
       state.tasks = saved.tasks || [];
       state.dailyMissions = saved.dailyMissions || null;
       state.showCompleted = saved.showCompleted || false;
+      state.questSort = saved.questSort || 'created';
     }
   } catch (e) { /* corrupt data, start fresh */ }
   checkDailyReset();
@@ -398,6 +400,39 @@ function sortedByPriority(tasks) {
   });
 }
 
+function applySortToActive(tasks) {
+  const arr = [...tasks];
+  switch (state.questSort) {
+    case 'priority':
+      return arr.sort((a, b) => {
+        if (a.priority == null && b.priority == null) return 0;
+        if (a.priority == null) return 1;
+        if (b.priority == null) return -1;
+        return a.priority - b.priority;
+      });
+    case 'alpha':
+      return arr.sort((a, b) => a.title.localeCompare(b.title));
+    case 'steps':
+      return arr.sort((a, b) => b.steps.length - a.steps.length);
+    case 'deadline':
+      return arr.sort((a, b) => {
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline.localeCompare(b.deadline);
+      });
+    case 'created':
+    default:
+      return arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+  }
+}
+
+function setQuestSort(s) {
+  state.questSort = s;
+  save();
+  renderCurrentView();
+}
+
 function getActiveStep() {
   for (const task of sortedByPriority(state.tasks)) {
     if (task.completedAt) continue;
@@ -487,12 +522,19 @@ function renderToday() {
       const doneCount = t.steps.filter(s => s.completed).length;
       const total = t.steps.length;
       const isActive = active && active.task.id === t.id;
+      let deadlineMeta = '';
+      if (t.deadline) {
+        const daysLeft = Math.round((new Date(t.deadline) - new Date(todayStr())) / 86400000);
+        const cls = daysLeft < 0 ? 'deadline-overdue' : daysLeft <= 3 ? 'deadline-soon' : 'deadline-ok';
+        const label = daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'due today' : `${daysLeft}d left`;
+        deadlineMeta = ` • <span class="${cls}" style="font-weight:600">📅 ${label}</span>`;
+      }
       html += `
         <div class="today-quest-row${isActive ? ' today-quest-active' : ''}">
           <div class="priority-badge${t.priority == null ? ' no-priority' : ''}">${t.priority != null ? '#' + t.priority : '—'}</div>
           <div class="today-quest-info">
             <div class="today-quest-title">${escHtml(t.title)}</div>
-            <div class="today-quest-meta">${doneCount}/${total} steps</div>
+            <div class="today-quest-meta">${doneCount}/${total} steps${deadlineMeta}</div>
           </div>
           ${isActive ? '<div class="today-quest-arrow">▶ Up Next</div>' : ''}
         </div>
@@ -527,15 +569,28 @@ function renderToday() {
 }
 
 // ─── QUESTS VIEW ─────────────────────────────────────
+const SORT_OPTIONS = [
+  { key: 'created',  label: '🕐 Date' },
+  { key: 'priority', label: '# Priority' },
+  { key: 'deadline', label: '📅 Deadline' },
+  { key: 'alpha',    label: 'A–Z' },
+  { key: 'steps',    label: '📋 Steps' },
+];
+
 function renderQuests() {
-  const active = state.tasks.filter(t => !t.completedAt);
+  const active = applySortToActive(state.tasks.filter(t => !t.completedAt));
   const done   = state.tasks.filter(t =>  t.completedAt);
+
+  const sortPills = SORT_OPTIONS.map(o => `
+    <button class="sort-pill${state.questSort === o.key ? ' active' : ''}" onclick="setQuestSort('${o.key}')">${o.label}</button>
+  `).join('');
 
   let html = `
     <div class="section-header">
       <div class="section-title">Active Quests</div>
       <button class="btn-add" onclick="openAddQuest()">+ New Quest</button>
     </div>
+    <div class="sort-bar">${sortPills}</div>
   `;
 
   if (active.length === 0) {
@@ -610,6 +665,15 @@ function renderQuestCard(task) {
     <button class="quest-edit-btn" onclick="event.stopPropagation(); openEditQuest('${task.id}')">✏️</button>
   ` : '';
 
+  const deadlineBadge = (() => {
+    if (!task.deadline) return '';
+    const today = todayStr();
+    const daysLeft = Math.round((new Date(task.deadline) - new Date(today)) / 86400000);
+    const cls = daysLeft < 0 ? 'deadline-overdue' : daysLeft <= 3 ? 'deadline-soon' : 'deadline-ok';
+    const label = daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'due today' : `${daysLeft}d left`;
+    return `<span class="deadline-badge ${cls}">📅 ${label}</span>`;
+  })();
+
   return `
     <div class="quest-card${task.completedAt ? ' completed' : ''}">
       <div class="quest-header" onclick="toggleQuestExpand('${task.id}')">
@@ -619,6 +683,7 @@ function renderQuestCard(task) {
           <div class="quest-meta">
             ${task.priority != null ? `<span class="priority-badge-inline">#${task.priority}</span>` : ''}
             ${diff.label} • ${doneCount}/${total} steps
+            ${deadlineBadge}
           </div>
         </div>
         ${editBtn}
@@ -825,7 +890,7 @@ let newQ = { title: '', difficulty: 'quest', steps: [''] };
 function openAddQuest() {
   modalMode = 'add';
   editingTaskId = null;
-  newQ = { title: '', difficulty: 'quest', steps: ['', ''], priority: null };
+  newQ = { title: '', difficulty: 'quest', steps: ['', ''], priority: null, deadline: '' };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('q-title')?.focus(), 80);
@@ -841,6 +906,7 @@ function openEditQuest(taskId) {
     difficulty: task.difficulty,
     steps: task.steps.length > 0 ? task.steps.map(s => s.text) : [''],
     priority: task.priority != null ? task.priority : null,
+    deadline: task.deadline || '',
   };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
@@ -921,18 +987,30 @@ function renderModal() {
       <div class="diff-picker">${diffHtml}</div>
     </div>
 
-    <div class="form-group">
-      <label class="form-label">Priority # <span style="color:var(--text3);font-weight:400">(optional — lower = tackled first)</span></label>
-      <input
-        id="q-priority"
-        class="form-input priority-input"
-        type="number"
-        min="1"
-        max="99"
-        placeholder="e.g. 1, 2, 3…"
-        value="${newQ.priority != null ? newQ.priority : ''}"
-        oninput="newQ.priority = this.value !== '' ? parseInt(this.value) : null"
-      />
+    <div class="modal-row-2">
+      <div class="form-group">
+        <label class="form-label">Priority # <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input
+          id="q-priority"
+          class="form-input priority-input"
+          type="number"
+          min="1"
+          max="99"
+          placeholder="1, 2, 3…"
+          value="${newQ.priority != null ? newQ.priority : ''}"
+          oninput="newQ.priority = this.value !== '' ? parseInt(this.value) : null"
+        />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Deadline <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <input
+          id="q-deadline"
+          class="form-input deadline-input"
+          type="date"
+          value="${newQ.deadline || ''}"
+          oninput="newQ.deadline = this.value"
+        />
+      </div>
     </div>
 
     <div class="form-group">
@@ -985,6 +1063,8 @@ function syncModalSteps() {
   if (titleEl) newQ.title = titleEl.value;
   const priorityEl = document.getElementById('q-priority');
   if (priorityEl) newQ.priority = priorityEl.value !== '' ? parseInt(priorityEl.value) : null;
+  const deadlineEl = document.getElementById('q-deadline');
+  if (deadlineEl) newQ.deadline = deadlineEl.value;
 }
 
 function addModalStep() {
@@ -1020,6 +1100,7 @@ function saveQuest() {
     title: newQ.title.trim(),
     difficulty: newQ.difficulty,
     priority: newQ.priority != null ? newQ.priority : null,
+    deadline: newQ.deadline || null,
     createdAt: todayStr(),
     completedAt: null,
     _expanded: false,
@@ -1055,6 +1136,7 @@ function saveEditQuest() {
   const newPriority = newQ.priority != null ? newQ.priority : null;
   if (newPriority !== task.priority) shiftPriorities(newPriority, task.id);
   task.priority = newPriority;
+  task.deadline = newQ.deadline || null;
 
   // Preserve completed state for steps that match by text
   task.steps = validSteps.map((text, i) => {

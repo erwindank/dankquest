@@ -1299,3 +1299,51 @@ html, body {
   letter-spacing: 0.3px;
 }
 
+/* ─── SORT BAR ───────────────────────────────────── */
+.sort-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 0 0 10px;
+  scrollbar-width: none;
+}
+.sort-bar::-webkit-scrollbar { display: none; }
+.sort-pill {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+.sort-pill:hover { border-color: var(--purple-light); color: var(--text); }
+.sort-pill.active { background: var(--purple); border-color: var(--purple); color: #fff; }
+
+/* ─── MODAL 2-COL ROW ────────────────────────────── */
+.modal-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.modal-row-2 .form-group { margin-bottom: 0; }
+.deadline-input { width: 100%; color-scheme: dark; }
+
+/* ─── DEADLINE BADGES ────────────────────────────── */
+.deadline-badge {
+  display: inline-block;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 6px;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.deadline-ok, .deadline-badge.deadline-ok     { color: var(--text2); }
+.deadline-soon, .deadline-badge.deadline-soon { color: #f59e0b; }
+.deadline-overdue, .deadline-badge.deadline-overdue { color: #ef4444; }
+
