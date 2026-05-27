@@ -3,16 +3,36 @@
 // ════════════════════════════════════════════════════
 
 const LEVELS = [
-  { level: 1,  title: 'Wanderer',     xp: 0     },
-  { level: 2,  title: 'Apprentice',   xp: 300   },
-  { level: 3,  title: 'Journeyman',   xp: 800   },
-  { level: 4,  title: 'Warrior',      xp: 1600  },
-  { level: 5,  title: 'Expert',       xp: 2800  },
-  { level: 6,  title: 'Champion',     xp: 4500  },
-  { level: 7,  title: 'Master',       xp: 7000  },
-  { level: 8,  title: 'Legend',       xp: 10500 },
-  { level: 9,  title: 'Grandmaster',  xp: 15000 },
-  { level: 10, title: 'Overlord',     xp: 21000 },
+  { level: 1,  title: 'Wanderer',      xp: 0       },
+  { level: 2,  title: 'Apprentice',    xp: 300     },
+  { level: 3,  title: 'Journeyman',    xp: 800     },
+  { level: 4,  title: 'Warrior',       xp: 1600    },
+  { level: 5,  title: 'Veteran',       xp: 2800    },
+  { level: 6,  title: 'Champion',      xp: 4500    },
+  { level: 7,  title: 'Master',        xp: 7000    },
+  { level: 8,  title: 'Legend',        xp: 10500   },
+  { level: 9,  title: 'Grandmaster',   xp: 15000   },
+  { level: 10, title: 'Overlord',      xp: 21000   },
+  { level: 11, title: 'Tyrant',        xp: 29000   },
+  { level: 12, title: 'Warlord',       xp: 39000   },
+  { level: 13, title: 'Titan',         xp: 51000   },
+  { level: 14, title: 'Conqueror',     xp: 65000   },
+  { level: 15, title: 'Sovereign',     xp: 82000   },
+  { level: 16, title: 'Archon',        xp: 100000  },
+  { level: 17, title: 'Arbiter',       xp: 120000  },
+  { level: 18, title: 'High Lord',     xp: 142000  },
+  { level: 19, title: 'Elder',         xp: 166000  },
+  { level: 20, title: 'Archmage',      xp: 192000  },
+  { level: 21, title: 'Dreadlord',     xp: 220000  },
+  { level: 22, title: 'Dragonborn',    xp: 250000  },
+  { level: 23, title: 'Ancient',       xp: 282000  },
+  { level: 24, title: 'Transcendent',  xp: 316000  },
+  { level: 25, title: 'Immortal',      xp: 352000  },
+  { level: 26, title: 'Celestial',     xp: 390000  },
+  { level: 27, title: 'Demigod',       xp: 430000  },
+  { level: 28, title: 'God-King',      xp: 472000  },
+  { level: 29, title: 'Eternal',       xp: 516000  },
+  { level: 30, title: 'Supreme',       xp: 562000  },
 ];
 
 const DIFFICULTIES = {
@@ -1080,31 +1100,31 @@ function renderStats() {
         <div class="stat-label">Day Streak</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value">${state.user.longestStreak}</div>
+        <div class="stat-value">🏆 ${state.user.longestStreak}</div>
         <div class="stat-label">Best Streak</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--green)">${state.user.totalTasksCompleted}</div>
+        <div class="stat-value" style="color:var(--green)">✅ ${state.user.totalTasksCompleted}</div>
         <div class="stat-label">Quests Done</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--purple-light)">${state.user.totalStepsCompleted}</div>
+        <div class="stat-value" style="color:var(--purple-light)">👣 ${state.user.totalStepsCompleted}</div>
         <div class="stat-label">Steps Taken</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--gold)">${state.user.totalFocusSessions || 0}</div>
+        <div class="stat-value" style="color:var(--gold)">🎯 ${state.user.totalFocusSessions || 0}</div>
         <div class="stat-label">Focus Sessions</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--purple-light)">${state.user.totalMissionsCompleted || 0}</div>
+        <div class="stat-value" style="color:var(--purple-light)">⚔️ ${state.user.totalMissionsCompleted || 0}</div>
         <div class="stat-label">Missions Done</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--orange)">${state.user.bestDaySteps || 0}</div>
+        <div class="stat-value" style="color:var(--orange)">🚀 ${state.user.bestDaySteps || 0}</div>
         <div class="stat-label">Best Day Steps</div>
       </div>
       <div class="stat-box">
-        <div class="stat-value" style="color:var(--green)">${(state.user.allTimeActiveDates || []).length}</div>
+        <div class="stat-value" style="color:var(--green)">📅 ${(state.user.allTimeActiveDates || []).length}</div>
         <div class="stat-label">Total Active Days</div>
       </div>
     </div>
