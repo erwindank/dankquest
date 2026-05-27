@@ -811,7 +811,14 @@ function renderQuestCard(task) {
     }
     task.steps.forEach(step => {
       stepsHtml += `
-        <div class="step-row" onclick="toggleStep('${task.id}', '${step.id}')">
+        <div class="step-row" draggable="true"
+          ondragstart="questStepDragStart(event,'${task.id}','${step.id}')"
+          ondragend="questStepDragEnd(event)"
+          ondragenter="questStepDragEnter(event,'${step.id}')"
+          ondragover="questStepDragOver(event)"
+          ondrop="questStepDrop(event,'${task.id}','${step.id}')"
+          onclick="toggleStep('${task.id}', '${step.id}')">
+          <span class="drag-handle" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
           <div class="step-check${step.completed ? ' done' : ''}">${step.completed ? '✓' : ''}</div>
           <div class="step-text${step.completed ? ' done' : ''}">
             ${escHtml(step.text)}
@@ -1126,6 +1133,86 @@ function exitFocus() {
   document.getElementById('focus-overlay').classList.add('hidden');
 }
 
+// ─── DRAG STATE ──────────────────────────────────────
+let _dragSrcIdx = null;
+let _dragSrcStepId = null;
+let _dragSrcTaskId = null;
+
+function modalStepDragStart(e, idx) {
+  _dragSrcIdx = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.closest('.step-input-row').classList.add('dragging');
+}
+
+function modalStepDragEnd(e) {
+  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
+}
+
+function modalStepDragEnter(e, targetIdx) {
+  if (targetIdx === _dragSrcIdx) return;
+  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function modalStepDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function modalStepDrop(e, targetIdx) {
+  e.preventDefault();
+  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
+  if (_dragSrcIdx === null || _dragSrcIdx === targetIdx) { _dragSrcIdx = null; return; }
+  syncModalSteps();
+  const [moved] = newQ.steps.splice(_dragSrcIdx, 1);
+  newQ.steps.splice(targetIdx, 0, moved);
+  _dragSrcIdx = null;
+  renderModal();
+}
+
+function questStepDragStart(e, taskId, stepId) {
+  _dragSrcStepId = stepId;
+  _dragSrcTaskId = taskId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('dragging');
+  e.stopPropagation();
+}
+
+function questStepDragEnd(e) {
+  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
+  _dragSrcStepId = null;
+  _dragSrcTaskId = null;
+}
+
+function questStepDragEnter(e, stepId) {
+  if (stepId === _dragSrcStepId) return;
+  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over'));
+  e.currentTarget.classList.add('drag-over');
+}
+
+function questStepDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+}
+
+function questStepDrop(e, taskId, targetStepId) {
+  e.preventDefault();
+  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
+  if (_dragSrcTaskId !== taskId || _dragSrcStepId === targetStepId || !_dragSrcStepId) return;
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const fromIdx = task.steps.findIndex(s => s.id === _dragSrcStepId);
+  const toIdx   = task.steps.findIndex(s => s.id === targetStepId);
+  if (fromIdx === -1 || toIdx === -1) return;
+  const [moved] = task.steps.splice(fromIdx, 1);
+  task.steps.splice(toIdx, 0, moved);
+  task.steps.forEach((s, i) => { s.isStarter = i === 0; });
+  _dragSrcStepId = null;
+  _dragSrcTaskId = null;
+  save();
+  renderCurrentView();
+}
+
 // ─── MODAL STATE ─────────────────────────────────────
 let modalMode = 'add'; // 'add' | 'edit' | 'bulk'
 let editingTaskId = null;
@@ -1195,7 +1282,14 @@ function renderModal() {
   `).join('');
 
   const stepsHtml = newQ.steps.map((s, i) => `
-    <div class="step-input-row">
+    <div class="step-input-row"
+      ondragenter="modalStepDragEnter(event,${i})"
+      ondragover="modalStepDragOver(event)"
+      ondrop="modalStepDrop(event,${i})">
+      <span class="drag-handle" draggable="true"
+        ondragstart="modalStepDragStart(event,${i})"
+        ondragend="modalStepDragEnd(event)"
+        title="Drag to reorder">⠿</span>
       <div class="step-num${i === 0 ? ' first' : ''}">${i + 1}</div>
       <input
         class="step-input"
