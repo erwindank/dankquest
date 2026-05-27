@@ -348,6 +348,10 @@ html, body {
   transition: width 0.4s;
 }
 
+.mission-progress-fill.weekly {
+  background: var(--gold);
+}
+
 .mission-item.completed .mission-title {
   text-decoration: line-through;
   color: var(--text3);

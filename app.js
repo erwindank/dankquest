@@ -23,12 +23,28 @@ const DIFFICULTIES = {
 };
 
 const MISSION_POOL = [
-  { id: 'first_step',  title: '⚔️ First Blood',     desc: 'Complete your first step today',     target: 1, type: 'steps',    xp: 50  },
-  { id: 'three_steps', title: '🔥 Momentum Builder', desc: 'Complete 3 steps today',              target: 3, type: 'steps',    xp: 100 },
-  { id: 'five_steps',  title: '💪 On a Roll',        desc: 'Complete 5 steps today',              target: 5, type: 'steps',    xp: 200 },
-  { id: 'one_task',    title: '🏆 Quest Slayer',     desc: 'Complete 1 full quest today',         target: 1, type: 'tasks',    xp: 250 },
-  { id: 'new_quest',   title: '📝 Quest Planner',    desc: 'Break down a new quest into steps',   target: 1, type: 'newTask',  xp: 75  },
-  { id: 'focus_mode',  title: '🎯 Deep Focus',       desc: 'Use Focus Mode at least once today',  target: 1, type: 'focus',    xp: 75  },
+  { id: 'first_step',   title: '⚔️ First Blood',      desc: 'Complete your first step today',      target: 1,  type: 'steps',   xp: 50  },
+  { id: 'three_steps',  title: '🔥 Momentum Builder',  desc: 'Complete 3 steps today',               target: 3,  type: 'steps',   xp: 100 },
+  { id: 'five_steps',   title: '💪 On a Roll',         desc: 'Complete 5 steps today',               target: 5,  type: 'steps',   xp: 200 },
+  { id: 'ten_steps',    title: '🌪️ Step Storm',         desc: 'Complete 10 steps today',              target: 10, type: 'steps',   xp: 350 },
+  { id: 'one_task',     title: '🏆 Quest Slayer',      desc: 'Complete 1 full quest today',          target: 1,  type: 'tasks',   xp: 250 },
+  { id: 'two_tasks',    title: '⚡ Double Victory',    desc: 'Complete 2 full quests today',         target: 2,  type: 'tasks',   xp: 450 },
+  { id: 'new_quest',    title: '📝 Quest Planner',     desc: 'Break down a new quest into steps',    target: 1,  type: 'newTask', xp: 75  },
+  { id: 'two_quests',   title: '📋 Quest Collector',   desc: 'Add 2 new quests today',               target: 2,  type: 'newTask', xp: 120 },
+  { id: 'focus_mode',   title: '🎯 Deep Focus',        desc: 'Use Focus Mode at least once today',   target: 1,  type: 'focus',   xp: 75  },
+  { id: 'focus_triple', title: '🧘 Flow State',        desc: 'Use Focus Mode 3 times today',         target: 3,  type: 'focus',   xp: 180 },
+];
+
+const WEEKLY_MISSION_POOL = [
+  { id: 'w_10steps',   title: '⚔️ Step Warrior',     desc: 'Complete 10 steps this week',        target: 10, type: 'steps',      xp: 300 },
+  { id: 'w_25steps',   title: '💪 Momentum Beast',   desc: 'Complete 25 steps this week',        target: 25, type: 'steps',      xp: 600 },
+  { id: 'w_50steps',   title: '🌪️ Unstoppable',       desc: 'Complete 50 steps this week',        target: 50, type: 'steps',      xp: 1000 },
+  { id: 'w_3tasks',    title: '🏆 Triple Threat',    desc: 'Complete 3 quests this week',        target: 3,  type: 'tasks',      xp: 500 },
+  { id: 'w_5tasks',    title: '💀 Quest Overlord',   desc: 'Complete 5 quests this week',        target: 5,  type: 'tasks',      xp: 800 },
+  { id: 'w_focus5',    title: '🎯 Focus Master',     desc: 'Use Focus Mode 5 times this week',   target: 5,  type: 'focus',      xp: 350 },
+  { id: 'w_3newquest', title: '📝 Quest Architect',  desc: 'Add 3 new quests this week',         target: 3,  type: 'newTask',    xp: 250 },
+  { id: 'w_5days',     title: '🔥 Week Warrior',     desc: 'Be active 5 days this week',         target: 5,  type: 'activeDays', xp: 450 },
+  { id: 'w_7days',     title: '👑 Perfect Week',     desc: 'Be active every day this week',      target: 7,  type: 'activeDays', xp: 750 },
 ];
 
 const XP_PER_STEP = 15;
@@ -47,6 +63,7 @@ let state = {
   },
   tasks: [],
   dailyMissions: null,
+  weeklyMissions: null,
   currentView: 'today',
   focusTaskId: null,
   focusStepId: null,
@@ -67,13 +84,15 @@ function load() {
       const saved = JSON.parse(raw);
       state.user = { ...state.user, ...saved.user };
       state.tasks = saved.tasks || [];
-      state.dailyMissions = saved.dailyMissions || null;
+      state.dailyMissions  = saved.dailyMissions  || null;
+      state.weeklyMissions = saved.weeklyMissions || null;
       state.showCompleted = saved.showCompleted || false;
       state.questSort    = saved.questSort    || 'created';
       state.questSortDir = saved.questSortDir || 'desc';
     }
   } catch (e) { /* corrupt data, start fresh */ }
   checkDailyReset();
+  checkWeeklyReset();
   checkStreakDecay();
 }
 
@@ -217,21 +236,60 @@ function checkStreakDecay() {
   }
 }
 
-function generateDailyMissions(date) {
-  const pool = [...MISSION_POOL];
+function pickRandom(pool, usedIds, count) {
+  const available = pool.filter(m => !usedIds.includes(m.id));
   const chosen = [];
-  for (let i = 0; i < 3 && pool.length > 0; i++) {
-    const idx = Math.floor(Math.random() * pool.length);
-    chosen.push({ ...pool[idx], progress: 0, completed: false });
-    pool.splice(idx, 1);
+  const used = [];
+  for (let i = 0; i < count && available.length > 0; i++) {
+    const idx = Math.floor(Math.random() * available.length);
+    const m = available.splice(idx, 1)[0];
+    chosen.push({ ...m, progress: 0, completed: false });
+    used.push(m.id);
   }
+  return { chosen, used };
+}
+
+function generateDailyMissions(date) {
+  const { chosen, used } = pickRandom(MISSION_POOL, [], 3);
   state.dailyMissions = {
     date,
     missions: chosen,
+    usedIds: used,
     stepsToday: 0,
     tasksToday: 0,
     newTaskToday: 0,
     focusToday: 0,
+  };
+  save();
+}
+
+function getWeekStart() {
+  const d = new Date();
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return d.toISOString().slice(0, 10);
+}
+
+function checkWeeklyReset() {
+  const ws = getWeekStart();
+  if (!state.weeklyMissions || state.weeklyMissions.weekStart !== ws) {
+    generateWeeklyMissions(ws);
+  }
+}
+
+function generateWeeklyMissions(weekStart) {
+  const { chosen, used } = pickRandom(WEEKLY_MISSION_POOL, [], 3);
+  state.weeklyMissions = {
+    weekStart,
+    missions: chosen,
+    usedIds: used,
+    stepsThisWeek: 0,
+    tasksThisWeek: 0,
+    newTaskThisWeek: 0,
+    focusThisWeek: 0,
+    activeDaysThisWeek: 0,
+    activeDates: [],
   };
   save();
 }
@@ -312,6 +370,7 @@ function markActiveToday() {
 
   state.user.lastActiveDate = t;
   awardXP(50, 'Daily streak!');
+  updateWeeklyMissions('activeDay');
   save();
 }
 
@@ -319,6 +378,7 @@ function markActiveToday() {
 function updateMissions(type) {
   if (!state.dailyMissions) return;
   const dm = state.dailyMissions;
+  if (!dm.usedIds) dm.usedIds = dm.missions.map(m => m.id);
 
   if (type === 'steps')   dm.stepsToday   = (dm.stepsToday   || 0) + 1;
   if (type === 'tasks')   dm.tasksToday   = (dm.tasksToday   || 0) + 1;
@@ -332,23 +392,90 @@ function updateMissions(type) {
     focus:   dm.focusToday   || 0,
   };
 
-  let allDone = true;
   for (const m of dm.missions) {
-    if (!m.completed) {
-      if (m.type === type) {
-        m.progress = Math.min(m.target, countMap[type]);
-        if (m.progress >= m.target) {
-          m.completed = true;
-          setTimeout(() => awardXP(m.xp, m.title), 400);
+    if (!m.completed && m.type === type) {
+      m.progress = Math.min(m.target, countMap[type]);
+      if (m.progress >= m.target) {
+        m.completed = true;
+        setTimeout(() => awardXP(m.xp, m.title), 400);
+        const { chosen, used } = pickRandom(MISSION_POOL, dm.usedIds, 1);
+        if (chosen.length > 0) {
+          const newM = chosen[0];
+          newM.progress = Math.min(newM.target, countMap[newM.type] || 0);
+          if (newM.progress >= newM.target) {
+            newM.completed = true;
+            setTimeout(() => awardXP(newM.xp, newM.title), 900);
+          }
+          dm.missions.push(newM);
+          dm.usedIds.push(...used);
+          setTimeout(() => toast('🎯 New daily mission unlocked!'), 700);
         }
       }
-      if (!m.completed) allDone = false;
     }
   }
 
-  if (allDone && dm.missions.length > 0 && !dm.allDoneToasted) {
+  const poolDone = dm.usedIds.length >= MISSION_POOL.length;
+  if (poolDone && dm.missions.every(m => m.completed) && !dm.allDoneToasted) {
     dm.allDoneToasted = true;
     setTimeout(() => toast('🎊 All daily missions complete!'), 1000);
+  }
+
+  save();
+}
+
+function updateWeeklyMissions(type) {
+  if (!state.weeklyMissions) return;
+  const wm = state.weeklyMissions;
+  if (!wm.usedIds) wm.usedIds = wm.missions.map(m => m.id);
+
+  if (type === 'steps')     wm.stepsThisWeek   = (wm.stepsThisWeek   || 0) + 1;
+  if (type === 'tasks')     wm.tasksThisWeek   = (wm.tasksThisWeek   || 0) + 1;
+  if (type === 'newTask')   wm.newTaskThisWeek = (wm.newTaskThisWeek || 0) + 1;
+  if (type === 'focus')     wm.focusThisWeek   = (wm.focusThisWeek   || 0) + 1;
+  if (type === 'activeDay') {
+    if (!wm.activeDates) wm.activeDates = [];
+    const t = todayStr();
+    if (!wm.activeDates.includes(t)) {
+      wm.activeDates.push(t);
+      wm.activeDaysThisWeek = wm.activeDates.length;
+    }
+  }
+
+  const countMap = {
+    steps:      wm.stepsThisWeek    || 0,
+    tasks:      wm.tasksThisWeek    || 0,
+    newTask:    wm.newTaskThisWeek  || 0,
+    focus:      wm.focusThisWeek    || 0,
+    activeDays: wm.activeDaysThisWeek || 0,
+  };
+
+  const matchType = type === 'activeDay' ? 'activeDays' : type;
+  for (const m of wm.missions) {
+    if (!m.completed && m.type === matchType) {
+      m.progress = Math.min(m.target, countMap[matchType]);
+      if (m.progress >= m.target) {
+        m.completed = true;
+        setTimeout(() => awardXP(m.xp, m.title), 400);
+        const { chosen, used } = pickRandom(WEEKLY_MISSION_POOL, wm.usedIds, 1);
+        if (chosen.length > 0) {
+          const newM = chosen[0];
+          newM.progress = Math.min(newM.target, countMap[newM.type] || 0);
+          if (newM.progress >= newM.target) {
+            newM.completed = true;
+            setTimeout(() => awardXP(newM.xp, newM.title), 900);
+          }
+          wm.missions.push(newM);
+          wm.usedIds.push(...used);
+          setTimeout(() => toast('🗓️ New weekly mission unlocked!'), 700);
+        }
+      }
+    }
+  }
+
+  const poolDone = wm.usedIds.length >= WEEKLY_MISSION_POOL.length;
+  if (poolDone && wm.missions.every(m => m.completed) && !wm.allDoneToasted) {
+    wm.allDoneToasted = true;
+    setTimeout(() => toast('🏆 All weekly missions complete!'), 1000);
   }
 
   save();
@@ -368,6 +495,7 @@ function completeStep(taskId, stepId) {
   markActiveToday();
   awardXP(XP_PER_STEP, 'Step done');
   updateMissions('steps');
+  updateWeeklyMissions('steps');
 
   const allDone = task.steps.length > 0 && task.steps.every(s => s.completed);
   if (allDone && !task.completedAt) {
@@ -376,6 +504,7 @@ function completeStep(taskId, stepId) {
     const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
     setTimeout(() => awardXP(diff.bonus, '⚔️ Quest complete!'), 500);
     updateMissions('tasks');
+    updateWeeklyMissions('tasks');
     setTimeout(() => toast('🎉 Quest Complete! Bonus XP incoming...'), 200);
   }
 
@@ -474,6 +603,28 @@ function renderCurrentView() {
   renderSidePanel();
 }
 
+// ─── MISSION RENDER HELPER ───────────────────────────
+function renderMissionList(missions, weekly = false) {
+  return missions.map(m => {
+    const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+    return `
+      <div class="mission-item${m.completed ? ' completed' : ''}">
+        <div class="mission-icon ${m.completed ? 'done' : 'pending'}">${m.completed ? '✅' : (weekly ? '🗓️' : '🎯')}</div>
+        <div class="mission-info">
+          <div class="mission-title">${escHtml(m.title)}</div>
+          <div class="mission-desc">${escHtml(m.desc)}</div>
+          ${!m.completed ? `
+            <div class="mission-progress-bar">
+              <div class="mission-progress-fill${weekly ? ' weekly' : ''}" style="width:${pct}%"></div>
+            </div>
+          ` : ''}
+        </div>
+        <div class="mission-xp">${m.completed ? '✓' : '+' + m.xp + ' XP'}</div>
+      </div>
+    `;
+  }).join('');
+}
+
 // ─── TODAY VIEW ──────────────────────────────────────
 function renderToday() {
   const hour = new Date().getHours();
@@ -558,24 +709,15 @@ function renderToday() {
 
   if (dm) {
     html += `<div class="card" style="margin-top:20px"><div class="card-title">Daily Missions</div>`;
-    for (const m of dm.missions) {
-      const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
-      html += `
-        <div class="mission-item${m.completed ? ' completed' : ''}">
-          <div class="mission-icon ${m.completed ? 'done' : 'pending'}">${m.completed ? '✅' : '🎯'}</div>
-          <div class="mission-info">
-            <div class="mission-title">${escHtml(m.title)}</div>
-            <div class="mission-desc">${escHtml(m.desc)}</div>
-            ${!m.completed ? `
-              <div class="mission-progress-bar">
-                <div class="mission-progress-fill" style="width:${pct}%"></div>
-              </div>
-            ` : ''}
-          </div>
-          <div class="mission-xp">${m.completed ? '✓' : '+' + m.xp + ' XP'}</div>
-        </div>
-      `;
-    }
+    html += renderMissionList(dm.missions);
+    html += `</div>`;
+  }
+
+  const wm = state.weeklyMissions;
+  if (wm) {
+    const daysLeft = 7 - ((new Date().getDay() + 6) % 7);
+    html += `<div class="card" style="margin-top:12px"><div class="card-title">Weekly Missions <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}d left</span></div>`;
+    html += renderMissionList(wm.missions, true);
     html += `</div>`;
   }
 
@@ -751,10 +893,16 @@ function toggleStep(taskId, stepId) {
       if (state.dailyMissions) {
         state.dailyMissions.tasksToday = Math.max(0, (state.dailyMissions.tasksToday || 0) - 1);
       }
+      if (state.weeklyMissions) {
+        state.weeklyMissions.tasksThisWeek = Math.max(0, (state.weeklyMissions.tasksThisWeek || 0) - 1);
+      }
     }
 
     if (state.dailyMissions) {
       state.dailyMissions.stepsToday = Math.max(0, (state.dailyMissions.stepsToday || 0) - 1);
+    }
+    if (state.weeklyMissions) {
+      state.weeklyMissions.stepsThisWeek = Math.max(0, (state.weeklyMissions.stepsThisWeek || 0) - 1);
     }
 
     state.user.xp = Math.max(0, state.user.xp - xpLost);
@@ -881,6 +1029,7 @@ function enterFocus(taskId, stepId) {
   document.getElementById('focus-overlay').classList.remove('hidden');
 
   updateMissions('focus');
+  updateWeeklyMissions('focus');
   save();
 }
 
@@ -1141,6 +1290,7 @@ function saveQuest() {
   shiftPriorities(task.priority, task.id);
   state.tasks.unshift(task);
   updateMissions('newTask');
+  updateWeeklyMissions('newTask');
   save();
   closeModal();
   toast('⚔️ Quest added!');
@@ -1205,6 +1355,7 @@ function saveBulkQuests() {
   });
 
   updateMissions('newTask');
+  updateWeeklyMissions('newTask');
   save();
   closeModal();
   toast(`⚔️ ${titles.length} quest${titles.length > 1 ? 's' : ''} added!`);
@@ -1258,6 +1409,7 @@ function quickAddQuest() {
   });
 
   updateMissions('newTask');
+  updateWeeklyMissions('newTask');
   save();
   input.value = '';
   toast('⚔️ Quest added!');
@@ -1281,23 +1433,35 @@ function renderSidePanel() {
 
   if (state.currentView === 'quests') {
     const dm = state.dailyMissions;
-    if (!dm) { panel.innerHTML = ''; return; }
-    let html = '<div class="side-panel-title">Daily Missions</div>';
-    for (const m of dm.missions) {
+    const wm = state.weeklyMissions;
+    let html = '';
+
+    const renderSideMissions = (missions, weekly = false) => missions.map(m => {
       const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
-      html += `
+      return `
         <div class="side-quest-card" style="cursor:default">
           <div class="side-quest-header">
-            <span>${m.completed ? '✅' : '🎯'}</span>
+            <span>${m.completed ? '✅' : (weekly ? '🗓️' : '🎯')}</span>
             <span class="side-quest-title">${escHtml(m.title)}</span>
             <span style="font-size:11px;color:var(--gold);font-weight:700;white-space:nowrap">${m.completed ? '✓' : '+' + m.xp + ' XP'}</span>
           </div>
-          ${!m.completed ? `<div class="mission-progress-bar" style="margin-top:6px"><div class="mission-progress-fill" style="width:${pct}%"></div></div>` : ''}
+          ${!m.completed ? `<div class="mission-progress-bar" style="margin-top:6px"><div class="mission-progress-fill${weekly ? ' weekly' : ''}" style="width:${pct}%"></div></div>` : ''}
           <div class="side-quest-meta">${escHtml(m.desc)}</div>
         </div>
       `;
+    }).join('');
+
+    if (dm) {
+      html += '<div class="side-panel-title">Daily Missions</div>';
+      html += renderSideMissions(dm.missions);
     }
-    panel.innerHTML = html;
+    if (wm) {
+      const daysLeft = 7 - ((new Date().getDay() + 6) % 7);
+      html += `<div class="side-panel-title" style="margin-top:14px">Weekly Missions <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}d left</span></div>`;
+      html += renderSideMissions(wm.missions, true);
+    }
+
+    panel.innerHTML = html || '';
     return;
   }
 
