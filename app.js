@@ -379,6 +379,16 @@ function completeStep(taskId, stepId) {
   renderCurrentView();
 }
 
+// Shift all other tasks with priority >= p up by 1, excluding excludeId
+function shiftPriorities(p, excludeId) {
+  if (p == null) return;
+  state.tasks.forEach(t => {
+    if (t.id !== excludeId && t.priority != null && t.priority >= p) {
+      t.priority += 1;
+    }
+  });
+}
+
 function sortedByPriority(tasks) {
   return [...tasks].sort((a, b) => {
     if (a.priority == null && b.priority == null) return 0;
@@ -1022,6 +1032,7 @@ function saveQuest() {
     })),
   };
 
+  shiftPriorities(task.priority, task.id);
   state.tasks.unshift(task);
   updateMissions('newTask');
   save();
@@ -1041,7 +1052,9 @@ function saveEditQuest() {
 
   task.title = newQ.title.trim();
   task.difficulty = newQ.difficulty;
-  task.priority = newQ.priority != null ? newQ.priority : null;
+  const newPriority = newQ.priority != null ? newQ.priority : null;
+  if (newPriority !== task.priority) shiftPriorities(newPriority, task.id);
+  task.priority = newPriority;
 
   // Preserve completed state for steps that match by text
   task.steps = validSteps.map((text, i) => {
