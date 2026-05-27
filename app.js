@@ -52,6 +52,7 @@ let state = {
   focusStepId: null,
   showCompleted: false,
   questSort: 'created',
+  questSortDir: 'desc',
 };
 
 // ─── PERSISTENCE ────────────────────────────────────
@@ -68,7 +69,8 @@ function load() {
       state.tasks = saved.tasks || [];
       state.dailyMissions = saved.dailyMissions || null;
       state.showCompleted = saved.showCompleted || false;
-      state.questSort = saved.questSort || 'created';
+      state.questSort    = saved.questSort    || 'created';
+      state.questSortDir = saved.questSortDir || 'desc';
     }
   } catch (e) { /* corrupt data, start fresh */ }
   checkDailyReset();
@@ -402,33 +404,45 @@ function sortedByPriority(tasks) {
 
 function applySortToActive(tasks) {
   const arr = [...tasks];
+  const d = state.questSortDir === 'desc' ? -1 : 1;
   switch (state.questSort) {
     case 'priority':
       return arr.sort((a, b) => {
         if (a.priority == null && b.priority == null) return 0;
         if (a.priority == null) return 1;
         if (b.priority == null) return -1;
-        return a.priority - b.priority;
+        return (a.priority - b.priority) * d;
       });
     case 'alpha':
-      return arr.sort((a, b) => a.title.localeCompare(b.title));
+      return arr.sort((a, b) => a.title.localeCompare(b.title) * d);
     case 'steps':
-      return arr.sort((a, b) => b.steps.length - a.steps.length);
+      return arr.sort((a, b) => (a.steps.length - b.steps.length) * d);
     case 'deadline':
       return arr.sort((a, b) => {
         if (!a.deadline && !b.deadline) return 0;
         if (!a.deadline) return 1;
         if (!b.deadline) return -1;
-        return a.deadline.localeCompare(b.deadline);
+        return a.deadline.localeCompare(b.deadline) * d;
       });
     case 'created':
     default:
-      return arr.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+      return arr.sort((a, b) => {
+        if (!a.createdAt && !b.createdAt) return 0;
+        if (!a.createdAt) return 1;
+        if (!b.createdAt) return -1;
+        return a.createdAt.localeCompare(b.createdAt) * d;
+      });
   }
 }
 
-function setQuestSort(s) {
-  state.questSort = s;
+function setQuestSort(key) {
+  if (state.questSort === key) {
+    state.questSortDir = state.questSortDir === 'asc' ? 'desc' : 'asc';
+  } else {
+    const opt = SORT_OPTIONS.find(o => o.key === key);
+    state.questSort    = key;
+    state.questSortDir = opt ? opt.defaultDir : 'asc';
+  }
   save();
   renderCurrentView();
 }
@@ -570,20 +584,22 @@ function renderToday() {
 
 // ─── QUESTS VIEW ─────────────────────────────────────
 const SORT_OPTIONS = [
-  { key: 'created',  label: '🕐 Date' },
-  { key: 'priority', label: '# Priority' },
-  { key: 'deadline', label: '📅 Deadline' },
-  { key: 'alpha',    label: 'A–Z' },
-  { key: 'steps',    label: '📋 Steps' },
+  { key: 'created',  label: '🕐 Date',      defaultDir: 'desc' },
+  { key: 'priority', label: '# Priority',   defaultDir: 'asc'  },
+  { key: 'deadline', label: '📅 Deadline',  defaultDir: 'asc'  },
+  { key: 'alpha',    label: 'A–Z',          defaultDir: 'asc'  },
+  { key: 'steps',    label: '📋 Steps',     defaultDir: 'desc' },
 ];
 
 function renderQuests() {
   const active = applySortToActive(state.tasks.filter(t => !t.completedAt));
   const done   = state.tasks.filter(t =>  t.completedAt);
 
-  const sortPills = SORT_OPTIONS.map(o => `
-    <button class="sort-pill${state.questSort === o.key ? ' active' : ''}" onclick="setQuestSort('${o.key}')">${o.label}</button>
-  `).join('');
+  const sortPills = SORT_OPTIONS.map(o => {
+    const isActive = state.questSort === o.key;
+    const arrow = isActive ? (state.questSortDir === 'asc' ? ' ↑' : ' ↓') : '';
+    return `<button class="sort-pill${isActive ? ' active' : ''}" onclick="setQuestSort('${o.key}')">${o.label}${arrow}</button>`;
+  }).join('');
 
   let html = `
     <div class="section-header">
