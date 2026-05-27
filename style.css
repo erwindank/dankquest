@@ -1347,3 +1347,9 @@ html, body {
 .deadline-soon, .deadline-badge.deadline-soon { color: #f59e0b; }
 .deadline-overdue, .deadline-badge.deadline-overdue { color: #ef4444; }
 
+.quest-created {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 3px;
+}
+

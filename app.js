@@ -690,6 +690,14 @@ function renderQuestCard(task) {
     return `<span class="deadline-badge ${cls}">📅 ${label}</span>`;
   })();
 
+  const createdLabel = (() => {
+    if (!task.createdAt) return '';
+    const d = new Date(task.createdAt);
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    return `${date} · ${time}`;
+  })();
+
   return `
     <div class="quest-card${task.completedAt ? ' completed' : ''}">
       <div class="quest-header" onclick="toggleQuestExpand('${task.id}')">
@@ -701,6 +709,7 @@ function renderQuestCard(task) {
             ${diff.label} • ${doneCount}/${total} steps
             ${deadlineBadge}
           </div>
+          ${createdLabel ? `<div class="quest-created">${createdLabel}</div>` : ''}
         </div>
         ${editBtn}
         <div class="quest-expand-icon">${expanded ? '▲' : '▼'}</div>
