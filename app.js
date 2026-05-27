@@ -600,8 +600,30 @@ function toggleStep(taskId, stepId) {
   if (!step) return;
 
   if (step.completed) {
+    const taskWasCompleted = !!task.completedAt;
+    let xpLost = XP_PER_STEP;
+
     step.completed = false;
     step.completedAt = null;
+    state.user.totalStepsCompleted = Math.max(0, state.user.totalStepsCompleted - 1);
+
+    if (taskWasCompleted) {
+      task.completedAt = null;
+      state.user.totalTasksCompleted = Math.max(0, state.user.totalTasksCompleted - 1);
+      const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
+      xpLost += diff.bonus;
+      if (state.dailyMissions) {
+        state.dailyMissions.tasksToday = Math.max(0, (state.dailyMissions.tasksToday || 0) - 1);
+      }
+    }
+
+    if (state.dailyMissions) {
+      state.dailyMissions.stepsToday = Math.max(0, (state.dailyMissions.stepsToday || 0) - 1);
+    }
+
+    state.user.xp = Math.max(0, state.user.xp - xpLost);
+    toast(`-${xpLost} XP — step reverted`);
+    updateHeader();
     save();
     renderCurrentView();
   } else {
