@@ -59,6 +59,11 @@ let state = {
     lastActiveDate: null,
     totalTasksCompleted: 0,
     totalStepsCompleted: 0,
+    totalFocusSessions: 0,
+    totalMissionsCompleted: 0,
+    bestDaySteps: 0,
+    allTimeActiveDates: [],
+    weeklyXpEarned: 0,
     joinedDate: todayStr(),
   },
   tasks: [],
@@ -250,6 +255,11 @@ function pickRandom(pool, usedIds, count) {
 }
 
 function generateDailyMissions(date) {
+  // Check if yesterday's step count beats the record before resetting
+  const prevSteps = state.dailyMissions ? (state.dailyMissions.stepsToday || 0) : 0;
+  if (prevSteps > (state.user.bestDaySteps || 0)) {
+    state.user.bestDaySteps = prevSteps;
+  }
   const { chosen, used } = pickRandom(MISSION_POOL, [], 3);
   state.dailyMissions = {
     date,
@@ -279,6 +289,7 @@ function checkWeeklyReset() {
 }
 
 function generateWeeklyMissions(weekStart) {
+  state.user.weeklyXpEarned = 0;
   const { chosen, used } = pickRandom(WEEKLY_MISSION_POOL, [], 3);
   state.weeklyMissions = {
     weekStart,
@@ -333,6 +344,7 @@ function xpPercent(xp) {
 function awardXP(amount, label) {
   const oldLevel = getLevel(state.user.xp).level;
   state.user.xp += amount;
+  state.user.weeklyXpEarned = (state.user.weeklyXpEarned || 0) + amount;
   const newLevel = getLevel(state.user.xp).level;
 
   toast(`+${amount} XP${label ? ' — ' + label : ''} ✨`);
@@ -369,6 +381,8 @@ function markActiveToday() {
   }
 
   state.user.lastActiveDate = t;
+  if (!state.user.allTimeActiveDates) state.user.allTimeActiveDates = [];
+  if (!state.user.allTimeActiveDates.includes(t)) state.user.allTimeActiveDates.push(t);
   awardXP(50, 'Daily streak!');
   updateWeeklyMissions('activeDay');
   save();
@@ -397,6 +411,7 @@ function updateMissions(type) {
       m.progress = Math.min(m.target, countMap[type]);
       if (m.progress >= m.target) {
         m.completed = true;
+        state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
         setTimeout(() => awardXP(m.xp, m.title), 400);
         const { chosen, used } = pickRandom(MISSION_POOL, dm.usedIds, 1);
         if (chosen.length > 0) {
@@ -404,6 +419,7 @@ function updateMissions(type) {
           newM.progress = Math.min(newM.target, countMap[newM.type] || 0);
           if (newM.progress >= newM.target) {
             newM.completed = true;
+            state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
             setTimeout(() => awardXP(newM.xp, newM.title), 900);
           }
           dm.missions.push(newM);
@@ -455,6 +471,7 @@ function updateWeeklyMissions(type) {
       m.progress = Math.min(m.target, countMap[matchType]);
       if (m.progress >= m.target) {
         m.completed = true;
+        state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
         setTimeout(() => awardXP(m.xp, m.title), 400);
         const { chosen, used } = pickRandom(WEEKLY_MISSION_POOL, wm.usedIds, 1);
         if (chosen.length > 0) {
@@ -462,6 +479,7 @@ function updateWeeklyMissions(type) {
           newM.progress = Math.min(newM.target, countMap[newM.type] || 0);
           if (newM.progress >= newM.target) {
             newM.completed = true;
+            state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
             setTimeout(() => awardXP(newM.xp, newM.title), 900);
           }
           wm.missions.push(newM);
@@ -978,6 +996,55 @@ function renderStats() {
         <div class="stat-value" style="color:var(--purple-light)">${state.user.totalStepsCompleted}</div>
         <div class="stat-label">Steps Taken</div>
       </div>
+      <div class="stat-box">
+        <div class="stat-value" style="color:var(--gold)">${state.user.totalFocusSessions || 0}</div>
+        <div class="stat-label">Focus Sessions</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" style="color:var(--purple-light)">${state.user.totalMissionsCompleted || 0}</div>
+        <div class="stat-label">Missions Done</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" style="color:var(--orange)">${state.user.bestDaySteps || 0}</div>
+        <div class="stat-label">Best Day Steps</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" style="color:var(--green)">${(state.user.allTimeActiveDates || []).length}</div>
+        <div class="stat-label">Total Active Days</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">This Week's XP</div>
+      <div style="font-size:36px;font-weight:900;color:var(--gold);text-align:center;padding:8px 0;">${(state.user.weeklyXpEarned || 0).toLocaleString()} <span style="font-size:16px;color:var(--text2);font-weight:600">XP</span></div>
+      <div style="font-size:12px;color:var(--text2);text-align:center;">Resets every Monday</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Quest Breakdown</div>
+      ${(() => {
+        const allTasks = state.tasks;
+        const done = allTasks.filter(t => t.completedAt).length;
+        const inProg = allTasks.filter(t => !t.completedAt && t.steps.some(s => s.completed)).length;
+        const notStarted = allTasks.filter(t => !t.completedAt && !t.steps.some(s => s.completed)).length;
+        const total = allTasks.length;
+        if (total === 0) return '<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">No quests yet</div>';
+        const donePct = Math.round((done / total) * 100);
+        const inProgPct = Math.round((inProg / total) * 100);
+        const notStartedPct = 100 - donePct - inProgPct;
+        return `
+          <div class="quest-breakdown-bar">
+            ${donePct > 0 ? `<div class="qb-seg qb-done" style="width:${donePct}%"></div>` : ''}
+            ${inProgPct > 0 ? `<div class="qb-seg qb-inprog" style="width:${inProgPct}%"></div>` : ''}
+            ${notStartedPct > 0 ? `<div class="qb-seg qb-none" style="width:${notStartedPct}%"></div>` : ''}
+          </div>
+          <div class="quest-breakdown-legend">
+            <div class="qb-legend-item"><span class="qb-dot qb-done"></span><span>${done} Done</span></div>
+            <div class="qb-legend-item"><span class="qb-dot qb-inprog"></span><span>${inProg} In Progress</span></div>
+            <div class="qb-legend-item"><span class="qb-dot qb-none"></span><span>${notStarted} Not Started</span></div>
+          </div>
+        `;
+      })()}
     </div>
 
     <div class="card">
@@ -1028,6 +1095,7 @@ function enterFocus(taskId, stepId) {
   document.getElementById('focus-step-text').textContent = step.text;
   document.getElementById('focus-overlay').classList.remove('hidden');
 
+  state.user.totalFocusSessions = (state.user.totalFocusSessions || 0) + 1;
   updateMissions('focus');
   updateWeeklyMissions('focus');
   save();
