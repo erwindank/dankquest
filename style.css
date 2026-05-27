@@ -923,5 +923,143 @@ html, body {
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
 }
 
+/* ─── QUICK ADD BAR ──────────────────────────────── */
+.quick-add-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.quick-add-input {
+  flex: 1;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.quick-add-input:focus { border-color: var(--purple); }
+.quick-add-input::placeholder { color: var(--text3); }
+
+.quick-add-btn {
+  background: var(--purple);
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  width: 46px;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.quick-add-btn:active { opacity: 0.8; }
+
+/* ─── MODAL TABS ─────────────────────────────────── */
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 20px;
+  background: var(--card);
+  border-radius: 10px;
+  padding: 3px;
+}
+
+.modal-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s, color 0.15s;
+}
+
+.modal-tab.active {
+  background: var(--purple);
+  color: #fff;
+}
+
+/* ─── BULK TEXTAREA ──────────────────────────────── */
+.bulk-textarea {
+  resize: none;
+  height: 180px;
+  line-height: 1.7;
+}
+
+/* ─── QUEST EDIT BUTTON ──────────────────────────── */
+.quest-edit-btn {
+  background: none;
+  border: none;
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  opacity: 0.5;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+
+.quest-edit-btn:active { opacity: 1; }
+
+/* ─── INLINE ADD STEP ────────────────────────────── */
+.no-steps-hint {
+  padding: 12px 16px;
+  font-size: 13px;
+  color: var(--text3);
+  font-style: italic;
+}
+
+.inline-add-step {
+  display: flex;
+  gap: 8px;
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.inline-step-input {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.2s;
+}
+
+.inline-step-input:focus { border-color: var(--purple); }
+.inline-step-input::placeholder { color: var(--text3); }
+
+.inline-add-btn {
+  background: var(--purple);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  width: 34px;
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity 0.15s;
+}
+
+.inline-add-btn:active { opacity: 0.8; }
+
 /* ─── HIDDEN UTIL ────────────────────────────────── */
 .hidden { display: none !important; }

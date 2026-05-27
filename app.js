@@ -63,7 +63,6 @@ function load() {
     const raw = localStorage.getItem('dankquest_v1');
     if (raw) {
       const saved = JSON.parse(raw);
-      // Deep merge to preserve new fields added later
       state.user = { ...state.user, ...saved.user };
       state.tasks = saved.tasks || [];
       state.dailyMissions = saved.dailyMissions || null;
@@ -290,7 +289,7 @@ function completeStep(taskId, stepId) {
   awardXP(XP_PER_STEP, 'Step done');
   updateMissions('steps');
 
-  const allDone = task.steps.every(s => s.completed);
+  const allDone = task.steps.length > 0 && task.steps.every(s => s.completed);
   if (allDone && !task.completedAt) {
     task.completedAt = new Date().toISOString();
     state.user.totalTasksCompleted++;
@@ -340,6 +339,17 @@ function renderToday() {
   let html = `
     <div class="greeting">${greeting} ⚔️</div>
     <div class="greeting-sub">${active ? 'Your next step is waiting.' : 'Looking strong — add a new quest!'}</div>
+
+    <div class="quick-add-bar">
+      <input
+        id="quick-add-input"
+        class="quick-add-input"
+        type="text"
+        placeholder="Quick add a quest..."
+        onkeydown="handleQuickAddKey(event)"
+      />
+      <button class="quick-add-btn" onclick="quickAddQuest()">+</button>
+    </div>
   `;
 
   if (active) {
@@ -445,6 +455,9 @@ function renderQuestCard(task) {
   let stepsHtml = '';
   if (expanded) {
     stepsHtml = `<div class="quest-steps open">`;
+    if (task.steps.length === 0) {
+      stepsHtml += `<div class="no-steps-hint">No steps yet — add one below</div>`;
+    }
     task.steps.forEach(step => {
       stepsHtml += `
         <div class="step-row" onclick="toggleStep('${task.id}', '${step.id}')">
@@ -456,8 +469,26 @@ function renderQuestCard(task) {
         </div>
       `;
     });
+    if (!task.completedAt) {
+      stepsHtml += `
+        <div class="inline-add-step">
+          <input
+            id="inline-input-${task.id}"
+            class="inline-step-input"
+            type="text"
+            placeholder="Add a step..."
+            onkeydown="handleInlineStepKey(event, '${task.id}')"
+          />
+          <button class="inline-add-btn" onclick="addInlineStep('${task.id}')">+</button>
+        </div>
+      `;
+    }
     stepsHtml += `</div>`;
   }
+
+  const editBtn = !task.completedAt ? `
+    <button class="quest-edit-btn" onclick="event.stopPropagation(); openEditQuest('${task.id}')">✏️</button>
+  ` : '';
 
   return `
     <div class="quest-card${task.completedAt ? ' completed' : ''}">
@@ -467,6 +498,7 @@ function renderQuestCard(task) {
           <div class="quest-title">${escHtml(task.title)}</div>
           <div class="quest-meta">${diff.label} • ${doneCount}/${total} steps</div>
         </div>
+        ${editBtn}
         <div class="quest-expand-icon">${expanded ? '▲' : '▼'}</div>
       </div>
       <div class="quest-progress">
@@ -512,7 +544,6 @@ function renderStats() {
   const pct  = xpPercent(state.user.xp);
   const xpToNext = next ? next.xp - state.user.xp : 0;
 
-  // Last 7 days
   const days = [];
   const activeDate = state.user.lastActiveDate;
   const streak = state.user.streak;
@@ -522,7 +553,6 @@ function renderStats() {
     d.setDate(d.getDate() - i);
     const ds = d.toISOString().slice(0, 10);
     const dn = d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2);
-    // Mark active if within current streak range
     let isActive = false;
     if (activeDate) {
       const daysFromActive = daysBetween(ds, activeDate);
@@ -637,11 +667,31 @@ function exitFocus() {
   document.getElementById('focus-overlay').classList.add('hidden');
 }
 
-// ─── ADD QUEST MODAL ─────────────────────────────────
-let newQ = { title: '', difficulty: 'quest', steps: ['', ''] };
+// ─── MODAL STATE ─────────────────────────────────────
+let modalMode = 'add'; // 'add' | 'edit' | 'bulk'
+let editingTaskId = null;
+let newQ = { title: '', difficulty: 'quest', steps: [''] };
 
+// ─── ADD / EDIT QUEST MODAL ──────────────────────────
 function openAddQuest() {
-  newQ = { title: '', difficulty: 'quest', steps: ['', ''] };
+  modalMode = 'add';
+  editingTaskId = null;
+  newQ = { title: '', difficulty: 'quest', steps: [''] };
+  renderModal();
+  document.getElementById('modal-overlay').classList.remove('hidden');
+  setTimeout(() => document.getElementById('q-title')?.focus(), 80);
+}
+
+function openEditQuest(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  modalMode = 'edit';
+  editingTaskId = taskId;
+  newQ = {
+    title: task.title,
+    difficulty: task.difficulty,
+    steps: task.steps.length > 0 ? task.steps.map(s => s.text) : [''],
+  };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('q-title')?.focus(), 80);
@@ -655,7 +705,26 @@ function handleOverlayClick(e) {
   if (e.target.id === 'modal-overlay') closeModal();
 }
 
+function switchModalTab(tab) {
+  syncModalSteps();
+  modalMode = tab;
+  renderModal();
+  if (tab === 'add')  setTimeout(() => document.getElementById('q-title')?.focus(), 80);
+  if (tab === 'bulk') setTimeout(() => document.getElementById('bulk-input')?.focus(), 80);
+}
+
 function renderModal() {
+  if (modalMode === 'bulk') { renderBulkModal(); return; }
+
+  const isEdit = modalMode === 'edit';
+
+  const tabsHtml = isEdit ? '' : `
+    <div class="modal-tabs">
+      <button class="modal-tab active">Single Quest</button>
+      <button class="modal-tab" onclick="switchModalTab('bulk')">Bulk Add</button>
+    </div>
+  `;
+
   const diffHtml = Object.entries(DIFFICULTIES).map(([k, d]) => `
     <div class="diff-opt${newQ.difficulty === k ? ' selected' : ''}" onclick="selectDiff('${k}')">
       <div class="diff-opt-icon">${d.icon}</div>
@@ -675,14 +744,15 @@ function renderModal() {
         oninput="newQ.steps[${i}] = this.value"
         onkeydown="handleStepKey(event, ${i})"
       />
-      ${i >= 2 ? `<button class="step-del" onclick="removeStep(${i})">✕</button>` : ''}
+      ${i >= 1 ? `<button class="step-del" onclick="removeStep(${i})">✕</button>` : ''}
     </div>
     ${i === 0 ? '<div class="step-hint">⭐ Make this so easy you can\'t say no (under 2 min)</div>' : ''}
   `).join('');
 
   document.getElementById('modal').innerHTML = `
-    <h2>New Quest ⚔️</h2>
-    <p class="modal-sub">Break it down until starting feels effortless.</p>
+    ${tabsHtml}
+    <h2>${isEdit ? 'Edit Quest ✏️' : 'New Quest ⚔️'}</h2>
+    <p class="modal-sub">${isEdit ? 'Update your quest details.' : 'Name it now, break it down later.'}</p>
 
     <div class="form-group">
       <label class="form-label">Quest Name</label>
@@ -702,14 +772,37 @@ function renderModal() {
     </div>
 
     <div class="form-group">
-      <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(min 2)</span></label>
+      <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(optional)</span></label>
       <div id="steps-list">${stepsHtml}</div>
       <button class="btn-add-step" onclick="addModalStep()">+ Add another step</button>
     </div>
 
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveQuest()">Save Quest ⚔️</button>
+      <button class="btn-save" onclick="${isEdit ? 'saveEditQuest()' : 'saveQuest()'}">${isEdit ? 'Save Changes ✓' : 'Save Quest ⚔️'}</button>
+    </div>
+  `;
+}
+
+function renderBulkModal() {
+  document.getElementById('modal').innerHTML = `
+    <div class="modal-tabs">
+      <button class="modal-tab" onclick="switchModalTab('add')">Single Quest</button>
+      <button class="modal-tab active">Bulk Add</button>
+    </div>
+    <h2>Bulk Add Quests ⚔️</h2>
+    <p class="modal-sub">One quest per line. Add steps to each one later.</p>
+    <div class="form-group">
+      <label class="form-label">Quest Names</label>
+      <textarea
+        id="bulk-input"
+        class="form-input bulk-textarea"
+        placeholder="Write a report&#10;Call the dentist&#10;Fix the login bug&#10;..."
+      ></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveBulkQuests()">Add All Quests ⚔️</button>
     </div>
   `;
 }
@@ -752,10 +845,8 @@ function handleStepKey(e, i) {
 
 function saveQuest() {
   syncModalSteps();
-
   if (!newQ.title.trim()) { toast('⚠️ Give your quest a name!'); return; }
   const validSteps = newQ.steps.map(s => s.trim()).filter(Boolean);
-  if (validSteps.length < 2) { toast('⚠️ Add at least 2 steps!'); return; }
 
   const task = {
     id: uid(),
@@ -779,6 +870,123 @@ function saveQuest() {
   closeModal();
   toast('⚔️ Quest added!');
   showView('today');
+}
+
+function saveEditQuest() {
+  syncModalSteps();
+  if (!newQ.title.trim()) { toast('⚠️ Give your quest a name!'); return; }
+
+  const task = state.tasks.find(t => t.id === editingTaskId);
+  if (!task) return;
+
+  const validSteps = newQ.steps.map(s => s.trim()).filter(Boolean);
+
+  task.title = newQ.title.trim();
+  task.difficulty = newQ.difficulty;
+
+  // Preserve completed state for steps that match by text
+  task.steps = validSteps.map((text, i) => {
+    const existing = task.steps.find(s => s.text === text && !s._matched);
+    if (existing) {
+      existing._matched = true;
+      return { ...existing, isStarter: i === 0 };
+    }
+    return { id: uid(), text, isStarter: i === 0, completed: false, completedAt: null };
+  });
+  task.steps.forEach(s => delete s._matched);
+
+  // Re-evaluate completion status
+  if (task.steps.length > 0 && task.steps.every(s => s.completed)) {
+    if (!task.completedAt) task.completedAt = new Date().toISOString();
+  } else {
+    task.completedAt = null;
+  }
+
+  save();
+  closeModal();
+  toast('✓ Quest updated!');
+  renderCurrentView();
+}
+
+function saveBulkQuests() {
+  const raw = document.getElementById('bulk-input')?.value || '';
+  const titles = raw.split('\n').map(l => l.trim()).filter(Boolean);
+  if (titles.length === 0) { toast('⚠️ Enter at least one quest name!'); return; }
+
+  titles.forEach(title => {
+    state.tasks.unshift({
+      id: uid(),
+      title,
+      difficulty: 'quest',
+      createdAt: todayStr(),
+      completedAt: null,
+      _expanded: false,
+      steps: [],
+    });
+  });
+
+  updateMissions('newTask');
+  save();
+  closeModal();
+  toast(`⚔️ ${titles.length} quest${titles.length > 1 ? 's' : ''} added!`);
+  showView('quests');
+}
+
+// ─── INLINE STEP ADD ─────────────────────────────────
+function addInlineStep(taskId) {
+  const input = document.getElementById(`inline-input-${taskId}`);
+  if (!input) return;
+  const text = input.value.trim();
+  if (!text) return;
+
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  task.steps.push({
+    id: uid(),
+    text,
+    isStarter: task.steps.length === 0,
+    completed: false,
+    completedAt: null,
+  });
+
+  save();
+  renderCurrentView();
+}
+
+function handleInlineStepKey(e, taskId) {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    addInlineStep(taskId);
+  }
+}
+
+// ─── QUICK ADD ───────────────────────────────────────
+function quickAddQuest() {
+  const input = document.getElementById('quick-add-input');
+  if (!input) return;
+  const title = input.value.trim();
+  if (!title) return;
+
+  state.tasks.unshift({
+    id: uid(),
+    title,
+    difficulty: 'quest',
+    createdAt: todayStr(),
+    completedAt: null,
+    _expanded: false,
+    steps: [],
+  });
+
+  updateMissions('newTask');
+  save();
+  input.value = '';
+  toast('⚔️ Quest added!');
+  renderCurrentView();
+}
+
+function handleQuickAddKey(e) {
+  if (e.key === 'Enter') quickAddQuest();
 }
 
 // ─── HEADER ──────────────────────────────────────────
