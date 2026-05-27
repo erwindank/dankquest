@@ -676,7 +676,7 @@ let newQ = { title: '', difficulty: 'quest', steps: [''] };
 function openAddQuest() {
   modalMode = 'add';
   editingTaskId = null;
-  newQ = { title: '', difficulty: 'quest', steps: [''] };
+  newQ = { title: '', difficulty: 'quest', steps: ['', ''] };
   renderModal();
   document.getElementById('modal-overlay').classList.remove('hidden');
   setTimeout(() => document.getElementById('q-title')?.focus(), 80);
@@ -772,7 +772,7 @@ function renderModal() {
     </div>
 
     <div class="form-group">
-      <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+      <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(min 2)</span></label>
       <div id="steps-list">${stepsHtml}</div>
       <button class="btn-add-step" onclick="addModalStep()">+ Add another step</button>
     </div>
@@ -847,6 +847,7 @@ function saveQuest() {
   syncModalSteps();
   if (!newQ.title.trim()) { toast('⚠️ Give your quest a name!'); return; }
   const validSteps = newQ.steps.map(s => s.trim()).filter(Boolean);
+  if (validSteps.length < 2) { toast('⚠️ Add at least 2 steps!'); return; }
 
   const task = {
     id: uid(),
