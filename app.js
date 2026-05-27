@@ -603,8 +603,34 @@ function getActiveStep() {
   return null;
 }
 
+// ─── REEL ────────────────────────────────────────────
+let reelTimer = null;
+let reelIdx   = 0;
+
+function startReel() {
+  if (reelTimer) clearInterval(reelTimer);
+  reelIdx = 0;
+  reelTimer = setInterval(advanceReel, 3200);
+}
+
+function stopReel() {
+  if (reelTimer) { clearInterval(reelTimer); reelTimer = null; }
+}
+
+function advanceReel() {
+  const slides = document.querySelectorAll('.reel-slide');
+  const dots   = document.querySelectorAll('.reel-dot');
+  if (!slides.length) { stopReel(); return; }
+  slides[reelIdx].classList.remove('active');
+  dots[reelIdx].classList.remove('active');
+  reelIdx = (reelIdx + 1) % slides.length;
+  slides[reelIdx].classList.add('active');
+  dots[reelIdx].classList.add('active');
+}
+
 // ─── VIEWS ──────────────────────────────────────────
 function showView(name) {
+  stopReel();
   state.currentView = name;
   document.querySelectorAll('.nav-item').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.v === name);
@@ -650,9 +676,73 @@ function renderToday() {
   const active = getActiveStep();
   const dm = state.dailyMissions;
 
+  const lvl      = getLevel(state.user.xp);
+  const next     = getNextLevel(state.user.xp);
+  const xpInLvl  = state.user.xp - lvl.xp;
+  const xpNeeded = next ? next.xp - lvl.xp : 1;
+  const xpPct    = next ? Math.min(100, Math.round((xpInLvl / xpNeeded) * 100)) : 100;
+  const stepsToday = state.tasks.flatMap(t => t.steps)
+    .filter(s => s.completedAt && s.completedAt.startsWith(todayStr())).length;
+  const questsDone = state.tasks.filter(t => t.completedAt).length;
+
+  const reelSlides = [
+    {
+      icon: '<span class="flame-anim">🔥</span>',
+      value: state.user.streak || 0,
+      unit: (state.user.streak === 1 ? 'day' : 'days') + ' streak',
+      detail: `Best: ${state.user.longestStreak || 0} days`,
+    },
+    {
+      icon: '⚔️',
+      value: lvl.title,
+      unit: `Level ${lvl.level}`,
+      detail: next
+        ? `${xpInLvl.toLocaleString()} / ${xpNeeded.toLocaleString()} XP → ${next.title}`
+        : 'MAX LEVEL 👑',
+      bar: xpPct,
+    },
+    {
+      icon: '✅',
+      value: stepsToday,
+      unit: stepsToday === 1 ? 'step today' : 'steps today',
+      detail: `${state.user.totalStepsCompleted || 0} total all-time`,
+    },
+    {
+      icon: '🏆',
+      value: questsDone,
+      unit: questsDone === 1 ? 'quest done' : 'quests done',
+      detail: `${state.user.xp.toLocaleString()} XP earned`,
+    },
+  ];
+
+  const reelHtml = `
+    <div class="progress-reel">
+      ${reelSlides.map((s, i) => `
+        <div class="reel-slide${i === 0 ? ' active' : ''}">
+          <div class="reel-icon-wrap">${s.icon}</div>
+          <div class="reel-content">
+            <div class="reel-top">
+              <span class="reel-value">${s.value}</span>
+              <span class="reel-unit">${s.unit}</span>
+            </div>
+            <div class="reel-detail">${s.detail}</div>
+            ${s.bar !== undefined ? `
+              <div class="reel-bar-track">
+                <div class="reel-bar-fill" style="width:${s.bar}%"></div>
+              </div>` : ''}
+          </div>
+        </div>
+      `).join('')}
+      <div class="reel-dots">
+        ${reelSlides.map((_, i) => `<span class="reel-dot${i === 0 ? ' active' : ''}"></span>`).join('')}
+      </div>
+    </div>
+  `;
+
   let html = `
     <div class="greeting">${greeting} ⚔️</div>
     <div class="greeting-sub">${active ? 'Your next step is waiting.' : 'Looking strong — add a new quest!'}</div>
+    ${reelHtml}
 
     <div class="quick-add-bar">
       <input
@@ -740,6 +830,7 @@ function renderToday() {
   }
 
   document.getElementById('view').innerHTML = html;
+  startReel();
 }
 
 // ─── QUESTS VIEW ─────────────────────────────────────
