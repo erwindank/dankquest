@@ -403,6 +403,7 @@ function renderCurrentView() {
     case 'quests': renderQuests(); break;
     case 'stats':  renderStats();  break;
   }
+  renderSidePanel();
 }
 
 // ─── TODAY VIEW ──────────────────────────────────────
@@ -1068,6 +1069,70 @@ function quickAddQuest() {
 
 function handleQuickAddKey(e) {
   if (e.key === 'Enter') quickAddQuest();
+}
+
+// ─── SIDE PANEL ──────────────────────────────────────
+function openQuestInPanel(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) task._expanded = true;
+  showView('quests');
+}
+
+function renderSidePanel() {
+  const panel = document.getElementById('side-panel');
+  if (!panel) return;
+
+  if (state.currentView === 'quests') {
+    const dm = state.dailyMissions;
+    if (!dm) { panel.innerHTML = ''; return; }
+    let html = '<div class="side-panel-title">Daily Missions</div>';
+    for (const m of dm.missions) {
+      const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
+      html += `
+        <div class="side-quest-card" style="cursor:default">
+          <div class="side-quest-header">
+            <span>${m.completed ? '✅' : '🎯'}</span>
+            <span class="side-quest-title">${escHtml(m.title)}</span>
+            <span style="font-size:11px;color:var(--gold);font-weight:700;white-space:nowrap">${m.completed ? '✓' : '+' + m.xp + ' XP'}</span>
+          </div>
+          ${!m.completed ? `<div class="mission-progress-bar" style="margin-top:6px"><div class="mission-progress-fill" style="width:${pct}%"></div></div>` : ''}
+          <div class="side-quest-meta">${escHtml(m.desc)}</div>
+        </div>
+      `;
+    }
+    panel.innerHTML = html;
+    return;
+  }
+
+  const active = state.tasks.filter(t => !t.completedAt);
+  if (active.length === 0) {
+    panel.innerHTML = `
+      <div class="side-panel-title">Active Quests</div>
+      <div class="side-panel-empty">No active quests yet.<br>Add one to get started!</div>
+    `;
+    return;
+  }
+
+  let html = '<div class="side-panel-title">Active Quests</div>';
+  active.forEach(t => {
+    const diff = DIFFICULTIES[t.difficulty] || DIFFICULTIES.quest;
+    const done = t.steps.filter(s => s.completed).length;
+    const total = t.steps.length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    html += `
+      <div class="side-quest-card" onclick="openQuestInPanel('${t.id}')">
+        <div class="side-quest-header">
+          <span>${diff.icon}</span>
+          <span class="side-quest-title">${escHtml(t.title)}</span>
+        </div>
+        <div class="progress-bar" style="height:4px;margin-top:6px">
+          <div class="progress-fill ${diff.fill}" style="width:${pct}%"></div>
+        </div>
+        <div class="side-quest-meta">${done}/${total} steps • ${diff.label}</div>
+      </div>
+    `;
+  });
+  panel.innerHTML = html;
 }
 
 // ─── HEADER ──────────────────────────────────────────
