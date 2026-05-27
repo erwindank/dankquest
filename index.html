@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0d0d1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>DankQuest ⚔️</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="header-logo">⚔️ DankQuest</div>
+      <div class="header-right">
+        <div class="streak-pill">
+          <span>🔥</span>
+          <span id="streak-num">0</span>
+        </div>
+        <div class="level-pill" id="level-pill">Lvl 1</div>
+      </div>
+    </header>
+
+    <div class="xp-track">
+      <div class="xp-fill" id="xp-fill"></div>
+      <div class="xp-text" id="xp-text">0 XP • Wanderer</div>
+    </div>
+
+    <main id="view" class="view"></main>
+
+    <nav class="bottom-nav">
+      <button class="nav-item active" onclick="showView('today')" data-v="today">
+        <span>🏠</span><span>Today</span>
+      </button>
+      <button class="nav-item" onclick="showView('quests')" data-v="quests">
+        <span>📜</span><span>Quests</span>
+      </button>
+      <button class="nav-item" onclick="showView('stats')" data-v="stats">
+        <span>🏆</span><span>Stats</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- Focus Mode Overlay -->
+  <div id="focus-overlay" class="focus-overlay hidden">
+    <div class="focus-inner">
+      <div class="focus-label">⚔️ FOCUS MODE</div>
+      <div class="focus-task-name" id="focus-task-name"></div>
+      <div class="focus-step" id="focus-step-text"></div>
+      <button class="focus-done-btn" onclick="completeFocusStep()">✓ Done — Next Step</button>
+      <button class="focus-exit-btn" onclick="exitFocus()">Exit Focus</button>
+    </div>
+  </div>
+
+  <!-- Add Quest Modal -->
+  <div id="modal-overlay" class="modal-overlay hidden" onclick="handleOverlayClick(event)">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="toast hidden"></div>
+
+  <!-- Level Up Overlay -->
+  <div id="levelup-overlay" class="levelup-overlay hidden">
+    <div class="levelup-inner">
+      <div class="levelup-emoji">⚔️</div>
+      <div class="levelup-title">LEVEL UP!</div>
+      <div class="levelup-sub" id="levelup-sub"></div>
+      <button onclick="dismissLevelUp()">Continue Quest</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
