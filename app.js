@@ -112,6 +112,82 @@ function importData() {
   input.click();
 }
 
+// ─── GOOGLE DRIVE BACKUP ────────────────────────────
+const GDRIVE_CLIENT_ID = '966589279218-m8kaa41o6guvgksv4ssh1rlh94a9qenv.apps.googleusercontent.com';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_FILENAME = 'dankquest-backup.json';
+let _gdriveToken = null;
+
+function _gdriveAuth(callback) {
+  const tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GDRIVE_CLIENT_ID,
+    scope: GDRIVE_SCOPE,
+    callback: (response) => {
+      if (response.error) { toast('⚠️ Google sign-in failed'); return; }
+      _gdriveToken = response.access_token;
+      callback();
+    },
+  });
+  tokenClient.requestAccessToken();
+}
+
+async function _gdriveFindFile() {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=name%3D'${GDRIVE_FILENAME}'+and+trashed%3Dfalse&fields=files(id)`,
+    { headers: { Authorization: `Bearer ${_gdriveToken}` } }
+  );
+  const data = await res.json();
+  return data.files && data.files.length > 0 ? data.files[0].id : null;
+}
+
+async function saveToGoogleDrive() {
+  _gdriveAuth(async () => {
+    try {
+      const json = JSON.stringify(state, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const fileId = await _gdriveFindFile();
+
+      if (fileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${_gdriveToken}`, 'Content-Type': 'application/json' },
+          body: blob,
+        });
+      } else {
+        const meta = { name: GDRIVE_FILENAME, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+        form.append('file', blob);
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${_gdriveToken}` },
+          body: form,
+        });
+      }
+      toast('☁️ Saved to Google Drive!');
+    } catch { toast('⚠️ Drive save failed'); }
+  });
+}
+
+async function loadFromGoogleDrive() {
+  _gdriveAuth(async () => {
+    try {
+      const fileId = await _gdriveFindFile();
+      if (!fileId) { toast('⚠️ No backup found in Drive'); return; }
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        headers: { Authorization: `Bearer ${_gdriveToken}` },
+      });
+      const imported = await res.json();
+      if (!imported.user || !imported.tasks) throw new Error('Invalid file');
+      state = { ...state, ...imported };
+      save();
+      updateHeader();
+      renderCurrentView();
+      toast('☁️ Loaded from Google Drive!');
+    } catch { toast('⚠️ Drive load failed'); }
+  });
+}
+
 // ─── DATE UTILS ─────────────────────────────────────
 function todayStr() {
   return new Date().toISOString().slice(0, 10);
@@ -622,6 +698,10 @@ function renderStats() {
       <div class="export-row">
         <button class="btn-export" onclick="exportData()">⬇️ Export JSON</button>
         <button class="btn-export" onclick="importData()">⬆️ Import JSON</button>
+      </div>
+      <div class="export-row" style="margin-top:8px;">
+        <button class="btn-export" onclick="saveToGoogleDrive()">☁️ Save to Drive</button>
+        <button class="btn-export" onclick="loadFromGoogleDrive()">☁️ Load from Drive</button>
       </div>
     </div>
   `;
