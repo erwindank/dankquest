@@ -1060,6 +1060,7 @@ html, body {
 }
 
 .quest-edit-btn:active { opacity: 1; }
+.quest-dup-btn { font-size: 17px; }
 
 /* ─── INLINE ADD STEP ────────────────────────────── */
 .no-steps-hint {

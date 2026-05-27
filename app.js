@@ -841,6 +841,8 @@ function renderQuestCard(task) {
     <button class="quest-edit-btn" onclick="event.stopPropagation(); openEditQuest('${task.id}')">✏️</button>
   ` : '';
 
+  const dupBtn = `<button class="quest-edit-btn quest-dup-btn" title="Duplicate quest" onclick="event.stopPropagation(); duplicateQuest('${task.id}')">⧉</button>`;
+
   const deadlineBadge = (() => {
     if (!task.deadline) return '';
     const today = todayStr();
@@ -872,6 +874,7 @@ function renderQuestCard(task) {
           ${createdLabel ? `<div class="quest-created">${createdLabel}</div>` : ''}
         </div>
         ${editBtn}
+        ${dupBtn}
         <div class="quest-expand-icon">${expanded ? '▲' : '▼'}</div>
       </div>
       <div class="quest-progress">
@@ -1402,6 +1405,37 @@ function saveEditQuest() {
   save();
   closeModal();
   toast('✓ Quest updated!');
+  renderCurrentView();
+}
+
+function duplicateQuest(taskId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+
+  const copy = {
+    id: uid(),
+    title: task.title + ' (copy)',
+    difficulty: task.difficulty,
+    priority: task.priority != null ? task.priority : null,
+    deadline: task.deadline || null,
+    createdAt: new Date().toISOString(),
+    completedAt: null,
+    _expanded: false,
+    steps: task.steps.map((s, i) => ({
+      id: uid(),
+      text: s.text,
+      isStarter: i === 0,
+      completed: false,
+      completedAt: null,
+    })),
+  };
+
+  shiftPriorities(copy.priority, copy.id);
+  state.tasks.unshift(copy);
+  updateMissions('newTask');
+  updateWeeklyMissions('newTask');
+  save();
+  toast('📋 Quest duplicated!');
   renderCurrentView();
 }
 
