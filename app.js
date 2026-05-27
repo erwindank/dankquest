@@ -811,14 +811,8 @@ function renderQuestCard(task) {
     }
     task.steps.forEach(step => {
       stepsHtml += `
-        <div class="step-row" draggable="true"
-          ondragstart="questStepDragStart(event,'${task.id}','${step.id}')"
-          ondragend="questStepDragEnd(event)"
-          ondragenter="questStepDragEnter(event,'${step.id}')"
-          ondragover="questStepDragOver(event)"
-          ondrop="questStepDrop(event,'${task.id}','${step.id}')"
-          onclick="toggleStep('${task.id}', '${step.id}')">
-          <span class="drag-handle" onclick="event.stopPropagation()" title="Drag to reorder">⠿</span>
+        <div class="step-row" onclick="toggleStep('${task.id}', '${step.id}')">
+          <span class="drag-handle" onpointerdown="questStepPointerDown(event,'${task.id}')" title="Drag to reorder">⠿</span>
           <div class="step-check${step.completed ? ' done' : ''}">${step.completed ? '✓' : ''}</div>
           <div class="step-text${step.completed ? ' done' : ''}">
             ${escHtml(step.text)}
@@ -1134,83 +1128,140 @@ function exitFocus() {
 }
 
 // ─── DRAG STATE ──────────────────────────────────────
-let _dragSrcIdx = null;
-let _dragSrcStepId = null;
-let _dragSrcTaskId = null;
+let _pd = null;
 
-function modalStepDragStart(e, idx) {
-  _dragSrcIdx = idx;
-  e.dataTransfer.effectAllowed = 'move';
-  e.currentTarget.closest('.step-input-row').classList.add('dragging');
+function _pdCleanup() {
+  if (!_pd) return;
+  _pd.clone.remove();
+  _pd.indicator.remove();
+  _pd.origEl.style.opacity = '';
+  document.removeEventListener('pointermove', _pdMove);
+  document.removeEventListener('pointerup', _pdEnd);
+  document.removeEventListener('pointercancel', _pdCleanup);
+  _pd = null;
 }
 
-function modalStepDragEnd(e) {
-  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
+function _pdRows() {
+  const sel = _pd.context === 'quest' ? '.step-row' : '.step-input-row';
+  return Array.from(_pd.container.querySelectorAll(sel));
 }
 
-function modalStepDragEnter(e, targetIdx) {
-  if (targetIdx === _dragSrcIdx) return;
-  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over'));
-  e.currentTarget.classList.add('drag-over');
+function _pdInsertIdx(rows, y) {
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i].getBoundingClientRect();
+    if (y < r.top + r.height / 2) return i;
+  }
+  return rows.length;
 }
 
-function modalStepDragOver(e) {
+function _pdInit(e, context, taskId) {
   e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
+  const rowSel = context === 'quest' ? '.step-row' : '.step-input-row';
+  const row = e.currentTarget.closest(rowSel);
+  if (!row) return;
+
+  const rect = row.getBoundingClientRect();
+
+  const clone = row.cloneNode(true);
+  clone.style.cssText = [
+    'position:fixed',
+    `left:${rect.left}px`,
+    `top:${rect.top}px`,
+    `width:${rect.width}px`,
+    'z-index:9999',
+    'pointer-events:none',
+    'box-shadow:0 16px 48px rgba(0,0,0,0.7),0 0 0 2px var(--purple-light)',
+    'border-radius:10px',
+    'background:var(--card2)',
+    'transform:scale(1.03) rotate(-0.8deg)',
+    'opacity:0.97',
+    'will-change:left,top',
+  ].join(';');
+  document.body.appendChild(clone);
+
+  row.style.opacity = '0.2';
+
+  const indicator = document.createElement('div');
+  indicator.style.cssText = [
+    'position:fixed',
+    `width:${rect.width}px`,
+    `left:${rect.left}px`,
+    'height:3px',
+    'background:var(--purple-light)',
+    'z-index:9998',
+    'pointer-events:none',
+    'border-radius:3px',
+    'box-shadow:0 0 12px var(--purple-light)',
+    'display:none',
+  ].join(';');
+  document.body.appendChild(indicator);
+
+  _pd = {
+    context, taskId,
+    origEl: row,
+    container: row.parentElement,
+    clone, indicator,
+    offsetX: e.clientX - rect.left,
+    offsetY: e.clientY - rect.top,
+    targetIdx: null,
+  };
+
+  document.addEventListener('pointermove', _pdMove, { passive: false });
+  document.addEventListener('pointerup', _pdEnd);
+  document.addEventListener('pointercancel', _pdCleanup);
 }
 
-function modalStepDrop(e, targetIdx) {
+function _pdMove(e) {
+  if (!_pd) return;
   e.preventDefault();
-  document.querySelectorAll('.step-input-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
-  if (_dragSrcIdx === null || _dragSrcIdx === targetIdx) { _dragSrcIdx = null; return; }
-  syncModalSteps();
-  const [moved] = newQ.steps.splice(_dragSrcIdx, 1);
-  newQ.steps.splice(targetIdx, 0, moved);
-  _dragSrcIdx = null;
-  renderModal();
+  _pd.clone.style.left = (e.clientX - _pd.offsetX) + 'px';
+  _pd.clone.style.top  = (e.clientY - _pd.offsetY) + 'px';
+
+  const rows = _pdRows();
+  const idx = _pdInsertIdx(rows, e.clientY);
+  _pd.targetIdx = idx;
+
+  const refRow = idx < rows.length ? rows[idx] : rows[rows.length - 1];
+  if (refRow) {
+    const r = refRow.getBoundingClientRect();
+    _pd.indicator.style.top = ((idx < rows.length ? r.top : r.bottom) - 1) + 'px';
+    _pd.indicator.style.display = 'block';
+  }
 }
 
-function questStepDragStart(e, taskId, stepId) {
-  _dragSrcStepId = stepId;
-  _dragSrcTaskId = taskId;
-  e.dataTransfer.effectAllowed = 'move';
-  e.currentTarget.classList.add('dragging');
-  e.stopPropagation();
+function _pdEnd() {
+  if (!_pd) return;
+  const { context, taskId, origEl, targetIdx } = _pd;
+  const rows = _pdRows();
+  const fromIdx = rows.indexOf(origEl);
+  _pdCleanup();
+
+  if (fromIdx === -1 || targetIdx === null) return;
+  const toIdx = targetIdx > fromIdx ? targetIdx - 1 : targetIdx;
+  if (toIdx === fromIdx) return;
+
+  if (context === 'quest') {
+    const task = state.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const [moved] = task.steps.splice(fromIdx, 1);
+    task.steps.splice(toIdx, 0, moved);
+    task.steps.forEach((s, i) => { s.isStarter = i === 0; });
+    save();
+    renderCurrentView();
+  } else {
+    syncModalSteps();
+    const [moved] = newQ.steps.splice(fromIdx, 1);
+    newQ.steps.splice(toIdx, 0, moved);
+    renderModal();
+  }
 }
 
-function questStepDragEnd(e) {
-  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
-  _dragSrcStepId = null;
-  _dragSrcTaskId = null;
+function questStepPointerDown(e, taskId) {
+  _pdInit(e, 'quest', taskId);
 }
 
-function questStepDragEnter(e, stepId) {
-  if (stepId === _dragSrcStepId) return;
-  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over'));
-  e.currentTarget.classList.add('drag-over');
-}
-
-function questStepDragOver(e) {
-  e.preventDefault();
-  e.dataTransfer.dropEffect = 'move';
-}
-
-function questStepDrop(e, taskId, targetStepId) {
-  e.preventDefault();
-  document.querySelectorAll('.step-row').forEach(el => el.classList.remove('drag-over', 'dragging'));
-  if (_dragSrcTaskId !== taskId || _dragSrcStepId === targetStepId || !_dragSrcStepId) return;
-  const task = state.tasks.find(t => t.id === taskId);
-  if (!task) return;
-  const fromIdx = task.steps.findIndex(s => s.id === _dragSrcStepId);
-  const toIdx   = task.steps.findIndex(s => s.id === targetStepId);
-  if (fromIdx === -1 || toIdx === -1) return;
-  const [moved] = task.steps.splice(fromIdx, 1);
-  task.steps.splice(toIdx, 0, moved);
-  task.steps.forEach((s, i) => { s.isStarter = i === 0; });
-  _dragSrcStepId = null;
-  _dragSrcTaskId = null;
-  save();
-  renderCurrentView();
+function modalStepPointerDown(e) {
+  _pdInit(e, 'modal', null);
 }
 
 // ─── MODAL STATE ─────────────────────────────────────
@@ -1282,14 +1333,8 @@ function renderModal() {
   `).join('');
 
   const stepsHtml = newQ.steps.map((s, i) => `
-    <div class="step-input-row"
-      ondragenter="modalStepDragEnter(event,${i})"
-      ondragover="modalStepDragOver(event)"
-      ondrop="modalStepDrop(event,${i})">
-      <span class="drag-handle" draggable="true"
-        ondragstart="modalStepDragStart(event,${i})"
-        ondragend="modalStepDragEnd(event)"
-        title="Drag to reorder">⠿</span>
+    <div class="step-input-row">
+      <span class="drag-handle" onpointerdown="modalStepPointerDown(event)" title="Drag to reorder">⠿</span>
       <div class="step-num${i === 0 ? ' first' : ''}">${i + 1}</div>
       <input
         class="step-input"

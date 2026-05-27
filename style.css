@@ -1122,22 +1122,10 @@ html, body {
   padding: 2px 3px;
   border-radius: 4px;
   transition: color 0.15s;
+  touch-action: none;
 }
 .drag-handle:hover { color: var(--text2); }
 .drag-handle:active { cursor: grabbing; }
-
-.step-row.drag-over {
-  box-shadow: inset 0 2px 0 var(--purple-light);
-  background: rgba(167,139,250,0.06);
-}
-.step-row.dragging { opacity: 0.35; pointer-events: none; }
-
-.step-input-row.drag-over {
-  outline: 2px solid var(--purple-light);
-  outline-offset: 2px;
-  border-radius: 8px;
-}
-.step-input-row.dragging { opacity: 0.35; }
 
 /* ─── HIDDEN UTIL ────────────────────────────────── */
 .hidden { display: none !important; }
