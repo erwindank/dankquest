@@ -556,10 +556,20 @@ function completeStep(taskId, stepId) {
     task.completedAt = new Date().toISOString();
     state.user.totalTasksCompleted++;
     const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
-    setTimeout(() => awardXP(diff.bonus, '⚔️ Quest complete!'), 500);
+    let bonusXP = diff.bonus;
+    let lateMsg = '';
+    if (task.deadline) {
+      const daysLate = Math.floor((new Date(todayStr()) - new Date(task.deadline)) / 86400000);
+      if (daysLate > 0) {
+        const pct = daysLate <= 3 ? 0.75 : daysLate <= 7 ? 0.5 : 0.25;
+        bonusXP = Math.max(1, Math.round(diff.bonus * pct));
+        lateMsg = ` (−${diff.bonus - bonusXP} XP late penalty)`;
+      }
+    }
+    setTimeout(() => awardXP(bonusXP, '⚔️ Quest complete!'), 500);
     updateMissions('tasks');
     updateWeeklyMissions('tasks');
-    setTimeout(() => toast('🎉 Quest Complete! Bonus XP incoming...'), 200);
+    setTimeout(() => toast(`🎉 Quest Complete! Bonus XP incoming...${lateMsg}`), 200);
   }
 
   save();
