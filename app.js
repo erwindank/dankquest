@@ -85,6 +85,7 @@ let state = {
     allTimeActiveDates: [],
     weeklyXpEarned: 0,
     joinedDate: todayStr(),
+    levelHistory: [],
   },
   tasks: [],
   dailyMissions: null,
@@ -392,6 +393,14 @@ function awardXP(amount, label) {
   save();
 
   if (newLevel > oldLevel) {
+    const now = new Date().toISOString();
+    for (let lv = oldLevel + 1; lv <= newLevel; lv++) {
+      const lvlDef = LEVELS.find(l => l.level === lv);
+      if (lvlDef && !state.user.levelHistory.some(h => h.level === lv)) {
+        if (!state.user.levelHistory) state.user.levelHistory = [];
+        state.user.levelHistory.push({ level: lv, title: lvlDef.title, icon: lvlDef.icon, tier: lvlDef.tier, achievedAt: now });
+      }
+    }
     setTimeout(() => showLevelUp(getLevel(state.user.xp)), 700);
   }
 }
@@ -1210,6 +1219,30 @@ function renderStats() {
         <div class="progress-fill fill-quest" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),var(--gold))"></div>
       </div>
       <div style="text-align:center;font-size:12px;color:var(--text2);margin-top:8px;">${pct}%</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Level Accomplishments</div>
+      ${(() => {
+        const history = (state.user.levelHistory || []).slice().sort((a, b) => b.level - a.level);
+        if (history.length === 0) {
+          return '<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">No level-ups recorded yet</div>';
+        }
+        return history.map(h => {
+          const d = new Date(h.achievedAt);
+          const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+          const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+          return `
+            <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
+              <span class="level-icon tier-${h.tier}" style="font-size:22px;flex-shrink:0;">${h.icon}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-weight:700;font-size:14px;">Lvl ${h.level} — ${h.title}</div>
+                <div style="font-size:12px;color:var(--text3);">${date} at ${time}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      })()}
     </div>
 
     <div class="card">
