@@ -1888,7 +1888,7 @@ function updateHeader() {
   const pct  = xpPercent(state.user.xp);
 
   document.getElementById('streak-num').textContent = state.user.streak;
-  document.getElementById('level-pill').textContent = `Lvl ${lvl.level}`;
+  document.getElementById('level-pill').innerHTML = `${lvlIcon(lvl)} Lvl ${lvl.level} · ${lvl.title}`;
   document.getElementById('xp-fill').style.width = pct + '%';
 
   const xpHtml = next
