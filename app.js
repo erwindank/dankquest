@@ -101,6 +101,7 @@ let state = {
 // ─── PERSISTENCE ────────────────────────────────────
 function save() {
   localStorage.setItem('dankquest_v1', JSON.stringify(state));
+  _autoSyncToDrive();
 }
 
 function load() {
@@ -182,6 +183,37 @@ const GDRIVE_CLIENT_ID = '966589279218-m8kaa41o6guvgksv4ssh1rlh94a9qenv.apps.goo
 const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
 const GDRIVE_FILENAME = 'dankquest-backup.json';
 let _gdriveToken = null;
+let _driveAutoEnabled = false;
+let _driveSaveTimer = null;
+
+async function _autoSyncToDrive() {
+  if (!_gdriveToken || !_driveAutoEnabled) return;
+  clearTimeout(_driveSaveTimer);
+  _driveSaveTimer = setTimeout(async () => {
+    try {
+      const json = JSON.stringify(state, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const fileId = await _gdriveFindFile();
+      if (fileId) {
+        await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`, {
+          method: 'PATCH',
+          headers: { Authorization: `Bearer ${_gdriveToken}`, 'Content-Type': 'application/json' },
+          body: blob,
+        });
+      } else {
+        const meta = { name: GDRIVE_FILENAME, mimeType: 'application/json' };
+        const form = new FormData();
+        form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
+        form.append('file', blob);
+        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${_gdriveToken}` },
+          body: form,
+        });
+      }
+    } catch { /* silent fail */ }
+  }, 3000);
+}
 
 function _gdriveAuth(callback) {
   const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -190,6 +222,7 @@ function _gdriveAuth(callback) {
     callback: (response) => {
       if (response.error) { toast('⚠️ Google sign-in failed'); return; }
       _gdriveToken = response.access_token;
+      _driveAutoEnabled = true;
       callback();
     },
   });
@@ -1357,6 +1390,7 @@ function renderStats() {
         <button class="btn-export" onclick="saveToGoogleDrive()">☁️ Save to Drive</button>
         <button class="btn-export" onclick="loadFromGoogleDrive()">☁️ Load from Drive</button>
       </div>
+      ${_driveAutoEnabled ? '<div style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;">✅ Drive autosave active — syncs after each action</div>' : '<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">Sign in above to enable Drive autosave</div>'}
     </div>
   `;
 }
