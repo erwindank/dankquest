@@ -116,6 +116,21 @@ function load() {
       state.questSortDir = saved.questSortDir || 'desc';
     }
   } catch (e) { /* corrupt data, start fresh */ }
+
+  // One-time fix: dates were stored as UTC strings before local-date migration.
+  // If the transition caused markActiveToday to fire for a false "new day", undo the +1.
+  if (!state.user.localDatesMigrated) {
+    state.user.localDatesMigrated = true;
+    const utcToday = new Date().toISOString().slice(0, 10);
+    const localToday = todayStr();
+    if (daysBetween(utcToday, localToday) === 1 &&
+        state.user.lastActiveDate === localToday &&
+        state.user.streak > 0) {
+      state.user.streak--;
+    }
+    save();
+  }
+
   checkDailyReset();
   checkWeeklyReset();
   checkStreakDecay();
