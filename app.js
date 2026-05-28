@@ -238,7 +238,8 @@ async function loadFromGoogleDrive() {
 
 // ─── DATE UTILS ─────────────────────────────────────
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function daysBetween(a, b) {
@@ -1067,7 +1068,8 @@ function renderStats() {
   for (let i = 6; i >= 0; i--) {
     const d = new Date();
     d.setDate(d.getDate() - i);
-    const ds = d.toISOString().slice(0, 10);
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
     const dn = d.toLocaleDateString('en', { weekday: 'short' }).slice(0, 2);
     let isActive = false;
     if (activeDate) {
