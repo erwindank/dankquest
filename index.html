@@ -61,6 +61,28 @@
     <div class="modal" id="modal"></div>
   </div>
 
+  <!-- Uncheck Confirm Dialog -->
+  <div id="uncheck-overlay" class="uncheck-overlay hidden" onclick="handleUncheckOverlayClick(event)">
+    <div class="uncheck-dialog">
+      <div class="uncheck-title">⚠️ Uncheck Step?</div>
+      <div class="uncheck-body" id="uncheck-body"></div>
+      <div class="uncheck-actions">
+        <button class="btn-cancel" onclick="dismissUncheck()">Cancel</button>
+        <button class="btn-uncheck-confirm" onclick="proceedUncheck()">Lose the XP</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Level Down Overlay -->
+  <div id="leveldown-overlay" class="leveldown-overlay hidden">
+    <div class="leveldown-inner">
+      <div class="leveldown-emoji" id="leveldown-icon">💀</div>
+      <div class="leveldown-title">LEVEL DOWN</div>
+      <div class="leveldown-sub" id="leveldown-sub"></div>
+      <button onclick="dismissLevelDown()">Face the Shame</button>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" class="toast hidden"></div>
 

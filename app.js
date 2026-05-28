@@ -135,6 +135,7 @@ function load() {
   checkDailyReset();
   checkWeeklyReset();
   checkStreakDecay();
+  checkDeadlinePenalties();
 }
 
 // ─── EXPORT / IMPORT ────────────────────────────────
@@ -272,9 +273,39 @@ function checkDailyReset() {
 function checkStreakDecay() {
   if (!state.user.lastActiveDate) return;
   const diff = daysBetween(state.user.lastActiveDate, todayStr());
-  if (diff > 1) {
+  if (diff > 1 && state.user.streak > 0) {
+    const lostStreak = state.user.streak;
+    const penalty = Math.min(lostStreak * 25, 300);
     state.user.streak = 0;
+    const today = todayStr();
+    if (state.user.lastStreakPenaltyDate !== today) {
+      state.user.lastStreakPenaltyDate = today;
+      setTimeout(() => deductXP(penalty, `💔 ${lostStreak}-day streak broken`), 800);
+    }
     save();
+  }
+}
+
+function checkDeadlinePenalties() {
+  const today = todayStr();
+  let totalPenalty = 0;
+  let penalizedCount = 0;
+
+  for (const task of state.tasks) {
+    if (task.completedAt || !task.deadline) continue;
+    if (task.lastPenaltyDate === today) continue;
+    const daysOverdue = Math.floor((new Date(today) - new Date(task.deadline)) / 86400000);
+    if (daysOverdue <= 0) continue;
+    const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
+    const penalty = Math.min(daysOverdue * 20, diff.bonus);
+    task.lastPenaltyDate = today;
+    totalPenalty += penalty;
+    penalizedCount++;
+  }
+
+  if (totalPenalty > 0) {
+    save();
+    setTimeout(() => deductXP(totalPenalty, `⏰ ${penalizedCount} overdue quest${penalizedCount > 1 ? 's' : ''}`), 1200);
   }
 }
 
@@ -413,6 +444,29 @@ function showLevelUp(lvl) {
 
 function dismissLevelUp() {
   document.getElementById('levelup-overlay').classList.add('hidden');
+}
+
+// ─── XP DEDUCT ──────────────────────────────────────
+function deductXP(amount, label) {
+  const oldLevel = getLevel(state.user.xp).level;
+  state.user.xp = Math.max(0, state.user.xp - amount);
+  const newLevel = getLevel(state.user.xp).level;
+  toast(`-${amount} XP${label ? ' — ' + label : ''} 💀`);
+  updateHeader();
+  save();
+  if (newLevel < oldLevel) {
+    setTimeout(() => showLevelDown(getLevel(state.user.xp)), 700);
+  }
+}
+
+function showLevelDown(lvl) {
+  document.getElementById('leveldown-icon').innerHTML = lvlIcon(lvl, 'level-icon-xl');
+  document.getElementById('leveldown-sub').textContent = `You fell back to ${lvl.title}`;
+  document.getElementById('leveldown-overlay').classList.remove('hidden');
+}
+
+function dismissLevelDown() {
+  document.getElementById('leveldown-overlay').classList.add('hidden');
 }
 
 // ─── STREAK ─────────────────────────────────────────
@@ -1044,6 +1098,82 @@ function toggleQuestExpand(taskId) {
   if (task) { task._expanded = !task._expanded; renderCurrentView(); }
 }
 
+// ─── UNCHECK CONFIRM ────────────────────────────────
+let _uncheckPending = null;
+
+function confirmUncheck(taskId, stepId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const step = task.steps.find(s => s.id === stepId);
+  if (!step) return;
+
+  const taskWillUncomplete = task.steps.every(s => s.completed);
+  const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
+  const xpLost = XP_PER_STEP + (taskWillUncomplete ? diff.bonus : 0);
+
+  let bodyHtml = `You will lose <strong>-${xpLost} XP</strong>.`;
+  if (taskWillUncomplete) {
+    bodyHtml += `<br>This will also re-open the quest <em>${escHtml(task.title)}</em> and remove its completion bonus.`;
+  }
+
+  document.getElementById('uncheck-body').innerHTML = bodyHtml;
+  _uncheckPending = { taskId, stepId };
+  document.getElementById('uncheck-overlay').classList.remove('hidden');
+}
+
+function proceedUncheck() {
+  if (!_uncheckPending) return;
+  const { taskId, stepId } = _uncheckPending;
+  dismissUncheck();
+  _doUncheck(taskId, stepId);
+}
+
+function dismissUncheck() {
+  _uncheckPending = null;
+  document.getElementById('uncheck-overlay').classList.add('hidden');
+}
+
+function handleUncheckOverlayClick(e) {
+  if (e.target.id === 'uncheck-overlay') dismissUncheck();
+}
+
+function _doUncheck(taskId, stepId) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (!task) return;
+  const step = task.steps.find(s => s.id === stepId);
+  if (!step) return;
+
+  const taskWasCompleted = !!task.completedAt;
+  let xpLost = XP_PER_STEP;
+
+  step.completed = false;
+  step.completedAt = null;
+  state.user.totalStepsCompleted = Math.max(0, state.user.totalStepsCompleted - 1);
+
+  if (taskWasCompleted) {
+    task.completedAt = null;
+    state.user.totalTasksCompleted = Math.max(0, state.user.totalTasksCompleted - 1);
+    const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
+    xpLost += diff.bonus;
+    if (state.dailyMissions) {
+      state.dailyMissions.tasksToday = Math.max(0, (state.dailyMissions.tasksToday || 0) - 1);
+    }
+    if (state.weeklyMissions) {
+      state.weeklyMissions.tasksThisWeek = Math.max(0, (state.weeklyMissions.tasksThisWeek || 0) - 1);
+    }
+  }
+
+  if (state.dailyMissions) {
+    state.dailyMissions.stepsToday = Math.max(0, (state.dailyMissions.stepsToday || 0) - 1);
+  }
+  if (state.weeklyMissions) {
+    state.weeklyMissions.stepsThisWeek = Math.max(0, (state.weeklyMissions.stepsThisWeek || 0) - 1);
+  }
+
+  deductXP(xpLost, 'step reverted');
+  renderCurrentView();
+}
+
 function toggleStep(taskId, stepId) {
   const task = state.tasks.find(t => t.id === taskId);
   if (!task || task.completedAt) return;
@@ -1051,38 +1181,7 @@ function toggleStep(taskId, stepId) {
   if (!step) return;
 
   if (step.completed) {
-    const taskWasCompleted = !!task.completedAt;
-    let xpLost = XP_PER_STEP;
-
-    step.completed = false;
-    step.completedAt = null;
-    state.user.totalStepsCompleted = Math.max(0, state.user.totalStepsCompleted - 1);
-
-    if (taskWasCompleted) {
-      task.completedAt = null;
-      state.user.totalTasksCompleted = Math.max(0, state.user.totalTasksCompleted - 1);
-      const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
-      xpLost += diff.bonus;
-      if (state.dailyMissions) {
-        state.dailyMissions.tasksToday = Math.max(0, (state.dailyMissions.tasksToday || 0) - 1);
-      }
-      if (state.weeklyMissions) {
-        state.weeklyMissions.tasksThisWeek = Math.max(0, (state.weeklyMissions.tasksThisWeek || 0) - 1);
-      }
-    }
-
-    if (state.dailyMissions) {
-      state.dailyMissions.stepsToday = Math.max(0, (state.dailyMissions.stepsToday || 0) - 1);
-    }
-    if (state.weeklyMissions) {
-      state.weeklyMissions.stepsThisWeek = Math.max(0, (state.weeklyMissions.stepsThisWeek || 0) - 1);
-    }
-
-    state.user.xp = Math.max(0, state.user.xp - xpLost);
-    toast(`-${xpLost} XP — step reverted`);
-    updateHeader();
-    save();
-    renderCurrentView();
+    confirmUncheck(taskId, stepId);
   } else {
     completeStep(taskId, stepId);
   }
