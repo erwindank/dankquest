@@ -1549,3 +1549,40 @@ html, body {
   margin-top: 3px;
 }
 
+/* ─── LEVEL TIER ICONS ─────────────────────────────── */
+.level-icon {
+  display: inline-block;
+  font-style: normal;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', sans-serif;
+  font-variant-emoji: text;
+  line-height: 1;
+  vertical-align: middle;
+}
+
+.level-icon-reel { font-size: 32px; }
+
+.level-icon-lg {
+  font-size: 52px;
+  display: inline-block;
+}
+
+.level-icon-xl {
+  font-size: 80px;
+  display: inline-block;
+}
+
+.stats-level-icon {
+  margin: 6px 0 2px;
+  line-height: 1;
+}
+
+.tier-1 { color: #C47942; }
+.tier-2 { color: #9AAABB; }
+.tier-3 { color: #D4A827; }
+.tier-4 { color: #A060CC; }
+.tier-5 { color: #2288DD; }
+.tier-6 {
+  color: #fff;
+  text-shadow: 0 0 10px rgba(245,197,24,0.9), 0 0 22px rgba(245,197,24,0.45);
+}
+

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#0d0d1a">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%230d0d1a'/><rect x='14.5' y='3' width='3' height='18' rx='1.5' fill='%23a78bfa'/><rect x='8' y='14' width='16' height='2.5' rx='1.25' fill='%23a78bfa'/><circle cx='16' cy='26' r='3.5' fill='%23f5c518'/><rect x='15.5' y='3.5' width='1' height='16' rx='.5' fill='rgba(255,255,255,.28)'/></svg>">
   <title>DankQuest ⚔️</title>
   <link rel="stylesheet" href="style.css">
 </head>
@@ -66,7 +67,7 @@
   <!-- Level Up Overlay -->
   <div id="levelup-overlay" class="levelup-overlay hidden">
     <div class="levelup-inner">
-      <div class="levelup-emoji">⚔️</div>
+      <div class="levelup-emoji" id="levelup-icon">⚔️</div>
       <div class="levelup-title">LEVEL UP!</div>
       <div class="levelup-sub" id="levelup-sub"></div>
       <button onclick="dismissLevelUp()">Continue Quest</button>

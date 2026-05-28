@@ -3,36 +3,36 @@
 // ════════════════════════════════════════════════════
 
 const LEVELS = [
-  { level: 1,  title: 'Wanderer',      xp: 0       },
-  { level: 2,  title: 'Apprentice',    xp: 300     },
-  { level: 3,  title: 'Journeyman',    xp: 800     },
-  { level: 4,  title: 'Warrior',       xp: 1600    },
-  { level: 5,  title: 'Veteran',       xp: 2800    },
-  { level: 6,  title: 'Champion',      xp: 4500    },
-  { level: 7,  title: 'Master',        xp: 7000    },
-  { level: 8,  title: 'Legend',        xp: 10500   },
-  { level: 9,  title: 'Grandmaster',   xp: 15000   },
-  { level: 10, title: 'Overlord',      xp: 21000   },
-  { level: 11, title: 'Tyrant',        xp: 29000   },
-  { level: 12, title: 'Warlord',       xp: 39000   },
-  { level: 13, title: 'Titan',         xp: 51000   },
-  { level: 14, title: 'Conqueror',     xp: 65000   },
-  { level: 15, title: 'Sovereign',     xp: 82000   },
-  { level: 16, title: 'Archon',        xp: 100000  },
-  { level: 17, title: 'Arbiter',       xp: 120000  },
-  { level: 18, title: 'High Lord',     xp: 142000  },
-  { level: 19, title: 'Elder',         xp: 166000  },
-  { level: 20, title: 'Archmage',      xp: 192000  },
-  { level: 21, title: 'Dreadlord',     xp: 220000  },
-  { level: 22, title: 'Dragonborn',    xp: 250000  },
-  { level: 23, title: 'Ancient',       xp: 282000  },
-  { level: 24, title: 'Transcendent',  xp: 316000  },
-  { level: 25, title: 'Immortal',      xp: 352000  },
-  { level: 26, title: 'Celestial',     xp: 390000  },
-  { level: 27, title: 'Demigod',       xp: 430000  },
-  { level: 28, title: 'God-King',      xp: 472000  },
-  { level: 29, title: 'Eternal',       xp: 516000  },
-  { level: 30, title: 'Supreme',       xp: 562000  },
+  { level: 1,  title: 'Wanderer',      xp: 0,      icon: '◌', tier: 1 },
+  { level: 2,  title: 'Apprentice',    xp: 300,    icon: '○', tier: 1 },
+  { level: 3,  title: 'Journeyman',    xp: 800,    icon: '◎', tier: 1 },
+  { level: 4,  title: 'Warrior',       xp: 1600,   icon: '◆', tier: 1 },
+  { level: 5,  title: 'Veteran',       xp: 2800,   icon: '★', tier: 1 },
+  { level: 6,  title: 'Champion',      xp: 4500,   icon: '✦', tier: 2 },
+  { level: 7,  title: 'Master',        xp: 7000,   icon: '✪', tier: 2 },
+  { level: 8,  title: 'Legend',        xp: 10500,  icon: '✸', tier: 2 },
+  { level: 9,  title: 'Grandmaster',   xp: 15000,  icon: '♛', tier: 2 },
+  { level: 10, title: 'Overlord',      xp: 21000,  icon: '♕', tier: 2 },
+  { level: 11, title: 'Tyrant',        xp: 29000,  icon: '♚', tier: 3 },
+  { level: 12, title: 'Warlord',       xp: 39000,  icon: '♔', tier: 3 },
+  { level: 13, title: 'Titan',         xp: 51000,  icon: '❋', tier: 3 },
+  { level: 14, title: 'Conqueror',     xp: 65000,  icon: '✱', tier: 3 },
+  { level: 15, title: 'Sovereign',     xp: 82000,  icon: '✳', tier: 3 },
+  { level: 16, title: 'Archon',        xp: 100000, icon: '✴', tier: 4 },
+  { level: 17, title: 'Arbiter',       xp: 120000, icon: '✶', tier: 4 },
+  { level: 18, title: 'High Lord',     xp: 142000, icon: '✤', tier: 4 },
+  { level: 19, title: 'Elder',         xp: 166000, icon: '✻', tier: 4 },
+  { level: 20, title: 'Archmage',      xp: 192000, icon: '✽', tier: 4 },
+  { level: 21, title: 'Dreadlord',     xp: 220000, icon: '∞', tier: 5 },
+  { level: 22, title: 'Dragonborn',    xp: 250000, icon: '⊕', tier: 5 },
+  { level: 23, title: 'Ancient',       xp: 282000, icon: 'Δ', tier: 5 },
+  { level: 24, title: 'Transcendent',  xp: 316000, icon: 'Ω', tier: 5 },
+  { level: 25, title: 'Immortal',      xp: 352000, icon: 'Ψ', tier: 5 },
+  { level: 26, title: 'Celestial',     xp: 390000, icon: 'Λ', tier: 6 },
+  { level: 27, title: 'Demigod',       xp: 430000, icon: 'Φ', tier: 6 },
+  { level: 28, title: 'God-King',      xp: 472000, icon: 'Σ', tier: 6 },
+  { level: 29, title: 'Eternal',       xp: 516000, icon: '∇', tier: 6 },
+  { level: 30, title: 'Supreme',       xp: 562000, icon: '◈', tier: 6 },
 ];
 
 const DIFFICULTIES = {
@@ -376,6 +376,10 @@ function xpPercent(xp) {
   return Math.min(100, Math.round(((xp - cur.xp) / (next.xp - cur.xp)) * 100));
 }
 
+function lvlIcon(lvl, extraClass = '') {
+  return `<span class="level-icon tier-${lvl.tier}${extraClass ? ' ' + extraClass : ''}">${lvl.icon}</span>`;
+}
+
 // ─── XP AWARD ───────────────────────────────────────
 function awardXP(amount, label) {
   const oldLevel = getLevel(state.user.xp).level;
@@ -393,6 +397,7 @@ function awardXP(amount, label) {
 }
 
 function showLevelUp(lvl) {
+  document.getElementById('levelup-icon').innerHTML = lvlIcon(lvl, 'level-icon-xl');
   document.getElementById('levelup-sub').textContent = `You are now a ${lvl.title}`;
   document.getElementById('levelup-overlay').classList.remove('hidden');
 }
@@ -739,7 +744,7 @@ function renderToday() {
       detail: `Best: ${state.user.longestStreak || 0} days`,
     },
     {
-      icon: '⚔️',
+      icon: lvlIcon(lvl, 'level-icon-reel'),
       value: lvl.title,
       unit: `Level ${lvl.level}`,
       detail: next
@@ -1114,6 +1119,7 @@ function renderStats() {
   document.getElementById('view').innerHTML = `
     <div class="stats-hero">
       <div class="stats-level-num">${lvl.level}</div>
+      <div class="stats-level-icon">${lvlIcon(lvl, 'level-icon-lg')}</div>
       <div class="stats-level-title">${lvl.title}</div>
       <div class="stats-xp-sub">
         ${state.user.xp.toLocaleString()} XP total
@@ -1885,10 +1891,10 @@ function updateHeader() {
   document.getElementById('level-pill').textContent = `Lvl ${lvl.level}`;
   document.getElementById('xp-fill').style.width = pct + '%';
 
-  const xpText = next
-    ? `${state.user.xp.toLocaleString()} / ${next.xp.toLocaleString()} XP • ${lvl.title}`
-    : `${state.user.xp.toLocaleString()} XP • ${lvl.title} 👑`;
-  document.getElementById('xp-text').textContent = xpText;
+  const xpHtml = next
+    ? `${state.user.xp.toLocaleString()} / ${next.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${lvl.title}`
+    : `${state.user.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${lvl.title} 👑`;
+  document.getElementById('xp-text').innerHTML = xpHtml;
 }
 
 // ─── TOAST ───────────────────────────────────────────
