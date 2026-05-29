@@ -90,6 +90,7 @@ let state = {
   tasks: [],
   dailyMissions: null,
   weeklyMissions: null,
+  activityLog: [],
   currentView: 'today',
   focusTaskId: null,
   focusStepId: null,
@@ -113,6 +114,7 @@ function load() {
       state.tasks = saved.tasks || [];
       state.dailyMissions  = saved.dailyMissions  || null;
       state.weeklyMissions = saved.weeklyMissions || null;
+      state.activityLog  = saved.activityLog  || [];
       state.showCompleted = saved.showCompleted || false;
       state.questSort    = saved.questSort    || 'created';
       state.questSortDir = saved.questSortDir || 'desc';
@@ -419,6 +421,13 @@ function escHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// ─── ACTIVITY LOG ───────────────────────────────────
+function logActivity(type, label, xp) {
+  if (!state.activityLog) state.activityLog = [];
+  state.activityLog.push({ id: uid(), type, label, xp, timestamp: new Date().toISOString() });
+  if (state.activityLog.length > 2000) state.activityLog.shift();
+}
+
 // ─── LEVEL UTILS ────────────────────────────────────
 function getLevel(xp) {
   let lvl = LEVELS[0];
@@ -463,6 +472,7 @@ function awardXP(amount, label) {
       if (lvlDef && !state.user.levelHistory.some(h => h.level === lv)) {
         if (!state.user.levelHistory) state.user.levelHistory = [];
         state.user.levelHistory.push({ level: lv, title: lvlDef.title, icon: lvlDef.icon, tier: lvlDef.tier, achievedAt: now });
+        logActivity('level_up', `${lvlDef.icon} Level up! Lvl ${lv} — ${lvlDef.title}`, 0);
       }
     }
     setTimeout(() => showLevelUp(getLevel(state.user.xp)), 700);
@@ -520,6 +530,7 @@ function markActiveToday() {
   state.user.lastActiveDate = t;
   if (!state.user.allTimeActiveDates) state.user.allTimeActiveDates = [];
   if (!state.user.allTimeActiveDates.includes(t)) state.user.allTimeActiveDates.push(t);
+  logActivity('streak', `🔥 Daily streak — day ${state.user.streak}`, 50);
   awardXP(50, 'Daily streak!');
   updateWeeklyMissions('activeDay');
   save();
@@ -549,6 +560,7 @@ function updateMissions(type) {
       if (m.progress >= m.target) {
         m.completed = true;
         state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
+        logActivity('mission', `🎯 Daily mission: ${m.title}`, m.xp);
         setTimeout(() => awardXP(m.xp, m.title), 400);
         const { chosen, used } = pickRandom(MISSION_POOL, dm.usedIds, 1);
         if (chosen.length > 0) {
@@ -557,6 +569,7 @@ function updateMissions(type) {
           if (newM.progress >= newM.target) {
             newM.completed = true;
             state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
+            logActivity('mission', `🎯 Daily mission: ${newM.title}`, newM.xp);
             setTimeout(() => awardXP(newM.xp, newM.title), 900);
           }
           dm.missions.push(newM);
@@ -609,6 +622,7 @@ function updateWeeklyMissions(type) {
       if (m.progress >= m.target) {
         m.completed = true;
         state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
+        logActivity('mission', `🗓️ Weekly mission: ${m.title}`, m.xp);
         setTimeout(() => awardXP(m.xp, m.title), 400);
         const { chosen, used } = pickRandom(WEEKLY_MISSION_POOL, wm.usedIds, 1);
         if (chosen.length > 0) {
@@ -617,6 +631,7 @@ function updateWeeklyMissions(type) {
           if (newM.progress >= newM.target) {
             newM.completed = true;
             state.user.totalMissionsCompleted = (state.user.totalMissionsCompleted || 0) + 1;
+            logActivity('mission', `🗓️ Weekly mission: ${newM.title}`, newM.xp);
             setTimeout(() => awardXP(newM.xp, newM.title), 900);
           }
           wm.missions.push(newM);
@@ -646,6 +661,7 @@ function completeStep(taskId, stepId) {
   step.completed = true;
   step.completedAt = new Date().toISOString();
   state.user.totalStepsCompleted++;
+  logActivity('step', `✅ Step: "${step.text}" — ${task.title}`, XP_PER_STEP);
 
   markActiveToday();
   awardXP(XP_PER_STEP, 'Step done');
@@ -667,6 +683,7 @@ function completeStep(taskId, stepId) {
         lateMsg = ` (−${diff.bonus - bonusXP} XP late penalty)`;
       }
     }
+    logActivity('quest', `${diff.icon} Quest complete: "${task.title}"${lateMsg}`, bonusXP);
     setTimeout(() => awardXP(bonusXP, '⚔️ Quest complete!'), 500);
     updateMissions('tasks');
     updateWeeklyMissions('tasks');
@@ -1203,6 +1220,7 @@ function _doUncheck(taskId, stepId) {
     state.weeklyMissions.stepsThisWeek = Math.max(0, (state.weeklyMissions.stepsThisWeek || 0) - 1);
   }
 
+  logActivity('step_revert', `↩️ Reverted: "${step.text}" — ${task.title}`, -xpLost);
   deductXP(xpLost, 'step reverted');
   renderCurrentView();
 }
@@ -1223,6 +1241,53 @@ function toggleStep(taskId, stepId) {
 function toggleCompleted() {
   state.showCompleted = !state.showCompleted;
   renderCurrentView();
+}
+
+// ─── ACTIVITY LOG UI ────────────────────────────────
+function toggleActivityLog() {
+  const content = document.getElementById('activity-log-content');
+  const icon = document.getElementById('activity-log-toggle-icon');
+  if (!content) return;
+  const open = !content.classList.contains('hidden');
+  content.classList.toggle('hidden', open);
+  icon.textContent = open ? '▾' : '▴';
+  if (!open) renderActivityLogItems(document.getElementById('activity-log-search')?.value || '');
+}
+
+function filterActivityLog() {
+  renderActivityLogItems(document.getElementById('activity-log-search')?.value || '');
+}
+
+function renderActivityLogItems(query) {
+  const list = document.getElementById('activity-log-list');
+  if (!list) return;
+  const log = (state.activityLog || []).slice().reverse();
+  const q = query.trim().toLowerCase();
+  const filtered = q ? log.filter(e => {
+    const d = new Date(e.timestamp);
+    const dateStr = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }).toLowerCase();
+    const isoStr = e.timestamp.slice(0, 10); // "2026-05-28"
+    return e.label.toLowerCase().includes(q) || dateStr.includes(q) || isoStr.includes(q);
+  }) : log;
+  if (!filtered.length) {
+    list.innerHTML = `<div class="activity-log-empty">${q ? 'No matching entries' : 'No activity recorded yet'}</div>`;
+    return;
+  }
+  const TYPE_ICONS = { step: '✅', quest: '⚔️', mission: '🎯', level_up: '🆙', streak: '🔥', focus: '🔮', step_revert: '↩️' };
+  list.innerHTML = filtered.map(e => {
+    const d = new Date(e.timestamp);
+    const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+    const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+    const xpClass = e.xp > 0 ? 'activity-xp-pos' : e.xp < 0 ? 'activity-xp-neg' : 'activity-xp-zero';
+    const xpStr = e.xp > 0 ? `+${e.xp} XP` : e.xp < 0 ? `${e.xp} XP` : '';
+    return `<div class="activity-log-item activity-type-${e.type}">
+      <div class="activity-log-label">${escHtml(e.label)}</div>
+      <div class="activity-log-meta">
+        ${xpStr ? `<span class="activity-xp ${xpClass}">${xpStr}</span>` : ''}
+        <span class="activity-time">${date} · ${time}</span>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── STATS VIEW ──────────────────────────────────────
@@ -1392,6 +1457,17 @@ function renderStats() {
       </div>
       ${_driveAutoEnabled ? '<div style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;">✅ Drive autosave active — syncs after each action</div>' : '<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">Sign in above to enable Drive autosave</div>'}
     </div>
+
+    <div class="card activity-log-card">
+      <button class="activity-log-header" onclick="toggleActivityLog()">
+        <span class="card-title" style="margin:0">📋 Activity Log</span>
+        <span id="activity-log-toggle-icon" class="activity-log-chevron">▾</span>
+      </button>
+      <div id="activity-log-content" class="activity-log-content hidden">
+        <input id="activity-log-search" type="text" class="activity-log-search" placeholder="Search activity..." oninput="filterActivityLog()" />
+        <div id="activity-log-list" class="activity-log-list"></div>
+      </div>
+    </div>
   `;
 }
 
@@ -1410,6 +1486,7 @@ function enterFocus(taskId, stepId) {
   document.getElementById('focus-overlay').classList.remove('hidden');
 
   state.user.totalFocusSessions = (state.user.totalFocusSessions || 0) + 1;
+  logActivity('focus', `🎯 Focus session: "${step.text}" — ${task.title}`, 0);
   updateMissions('focus');
   updateWeeklyMissions('focus');
   save();
