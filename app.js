@@ -151,7 +151,7 @@ function exportData() {
   a.download = `dankquest-backup-${todayStr()}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  toast('📁 Backup downloaded!');
+  toast(t('toast_backup_downloaded'));
 }
 
 function importData() {
@@ -170,9 +170,9 @@ function importData() {
         save();
         updateHeader();
         renderCurrentView();
-        toast('✅ Data imported!');
+        toast(t('toast_data_imported'));
       } catch {
-        toast('⚠️ Invalid backup file');
+        toast(t('toast_invalid_backup'));
       }
     };
     reader.readAsText(file);
@@ -222,7 +222,7 @@ function _gdriveAuth(callback) {
     client_id: GDRIVE_CLIENT_ID,
     scope: GDRIVE_SCOPE,
     callback: (response) => {
-      if (response.error) { toast('⚠️ Google sign-in failed'); return; }
+      if (response.error) { toast(t('toast_google_fail')); return; }
       _gdriveToken = response.access_token;
       _driveAutoEnabled = true;
       callback();
@@ -264,8 +264,8 @@ async function saveToGoogleDrive() {
           body: form,
         });
       }
-      toast('☁️ Saved to Google Drive!');
-    } catch { toast('⚠️ Drive save failed'); }
+      toast(t('toast_drive_saved'));
+    } catch { toast(t('toast_drive_save_fail')); }
   });
 }
 
@@ -273,7 +273,7 @@ async function loadFromGoogleDrive() {
   _gdriveAuth(async () => {
     try {
       const fileId = await _gdriveFindFile();
-      if (!fileId) { toast('⚠️ No backup found in Drive'); return; }
+      if (!fileId) { toast(t('toast_drive_no_backup')); return; }
       const res = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
         headers: { Authorization: `Bearer ${_gdriveToken}` },
       });
@@ -283,8 +283,8 @@ async function loadFromGoogleDrive() {
       save();
       updateHeader();
       renderCurrentView();
-      toast('☁️ Loaded from Google Drive!');
-    } catch { toast('⚠️ Drive load failed'); }
+      toast(t('toast_drive_loaded'));
+    } catch { toast(t('toast_drive_load_fail')); }
   });
 }
 
@@ -481,7 +481,7 @@ function awardXP(amount, label) {
 
 function showLevelUp(lvl) {
   document.getElementById('levelup-icon').innerHTML = lvlIcon(lvl, 'level-icon-xl');
-  document.getElementById('levelup-sub').textContent = `You are now a ${lvl.title}`;
+  document.getElementById('levelup-sub').textContent = `${t('levelup_sub')} ${tLevel(lvl.level)}`;
   document.getElementById('levelup-overlay').classList.remove('hidden');
 }
 
@@ -504,7 +504,7 @@ function deductXP(amount, label) {
 
 function showLevelDown(lvl) {
   document.getElementById('leveldown-icon').innerHTML = lvlIcon(lvl, 'level-icon-xl');
-  document.getElementById('leveldown-sub').textContent = `You fell back to ${lvl.title}`;
+  document.getElementById('leveldown-sub').textContent = `${t('leveldown_sub')} ${tLevel(lvl.level)}`;
   document.getElementById('leveldown-overlay').classList.remove('hidden');
 }
 
@@ -531,7 +531,7 @@ function markActiveToday() {
   if (!state.user.allTimeActiveDates) state.user.allTimeActiveDates = [];
   if (!state.user.allTimeActiveDates.includes(t)) state.user.allTimeActiveDates.push(t);
   logActivity('streak', `🔥 Daily streak — day ${state.user.streak}`, 50);
-  awardXP(50, 'Daily streak!');
+  awardXP(50, t('toast_daily_streak'));
   updateWeeklyMissions('activeDay');
   save();
 }
@@ -574,7 +574,7 @@ function updateMissions(type) {
           }
           dm.missions.push(newM);
           dm.usedIds.push(...used);
-          setTimeout(() => toast('🎯 New daily mission unlocked!'), 700);
+          setTimeout(() => toast(t('missions_new_daily')), 700);
         }
       }
     }
@@ -583,7 +583,7 @@ function updateMissions(type) {
   const poolDone = dm.usedIds.length >= MISSION_POOL.length;
   if (poolDone && dm.missions.every(m => m.completed) && !dm.allDoneToasted) {
     dm.allDoneToasted = true;
-    setTimeout(() => toast('🎊 All daily missions complete!'), 1000);
+    setTimeout(() => toast(t('missions_all_daily')), 1000);
   }
 
   save();
@@ -636,7 +636,7 @@ function updateWeeklyMissions(type) {
           }
           wm.missions.push(newM);
           wm.usedIds.push(...used);
-          setTimeout(() => toast('🗓️ New weekly mission unlocked!'), 700);
+          setTimeout(() => toast(t('missions_new_weekly')), 700);
         }
       }
     }
@@ -645,7 +645,7 @@ function updateWeeklyMissions(type) {
   const poolDone = wm.usedIds.length >= WEEKLY_MISSION_POOL.length;
   if (poolDone && wm.missions.every(m => m.completed) && !wm.allDoneToasted) {
     wm.allDoneToasted = true;
-    setTimeout(() => toast('🏆 All weekly missions complete!'), 1000);
+    setTimeout(() => toast(t('missions_all_weekly')), 1000);
   }
 
   save();
@@ -664,7 +664,7 @@ function completeStep(taskId, stepId) {
   logActivity('step', `✅ Step: "${step.text}" — ${task.title}`, XP_PER_STEP);
 
   markActiveToday();
-  awardXP(XP_PER_STEP, 'Step done');
+  awardXP(XP_PER_STEP, t('toast_step_done'));
   updateMissions('steps');
   updateWeeklyMissions('steps');
 
@@ -684,10 +684,10 @@ function completeStep(taskId, stepId) {
       }
     }
     logActivity('quest', `${diff.icon} Quest complete: "${task.title}"${lateMsg}`, bonusXP);
-    setTimeout(() => awardXP(bonusXP, '⚔️ Quest complete!'), 500);
+    setTimeout(() => awardXP(bonusXP, t('toast_quest_complete_label')), 500);
     updateMissions('tasks');
     updateWeeklyMissions('tasks');
-    setTimeout(() => toast(`🎉 Quest Complete! Bonus XP incoming...${lateMsg}`), 200);
+    setTimeout(() => toast(`${t('toast_quest_complete')}${lateMsg}`), 200);
   }
 
   save();
@@ -697,9 +697,9 @@ function completeStep(taskId, stepId) {
 // Shift all other tasks with priority >= p up by 1, excluding excludeId
 function shiftPriorities(p, excludeId) {
   if (p == null) return;
-  state.tasks.forEach(t => {
-    if (t.id !== excludeId && t.priority != null && t.priority >= p) {
-      t.priority += 1;
+  state.tasks.forEach(task => {
+    if (task.id !== excludeId && task.priority != null && task.priority >= p) {
+      task.priority += 1;
     }
   });
 }
@@ -819,8 +819,8 @@ function renderMissionList(missions, weekly = false) {
       <div class="mission-item${m.completed ? ' completed' : ''}">
         <div class="mission-icon ${m.completed ? 'done' : 'pending'}">${m.completed ? '✅' : (weekly ? '🗓️' : '🎯')}</div>
         <div class="mission-info">
-          <div class="mission-title">${escHtml(m.title)}</div>
-          <div class="mission-desc">${escHtml(m.desc)}</div>
+          <div class="mission-title">${escHtml(tMission(m.id, 'title', weekly) || m.title)}</div>
+          <div class="mission-desc">${escHtml(tMission(m.id, 'desc', weekly) || m.desc)}</div>
           ${!m.completed ? `
             <div class="mission-progress-bar">
               <div class="mission-progress-fill${weekly ? ' weekly' : ''}" style="width:${pct}%"></div>
@@ -836,7 +836,7 @@ function renderMissionList(missions, weekly = false) {
 // ─── TODAY VIEW ──────────────────────────────────────
 function renderToday() {
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? t('greeting_morning') : hour < 17 ? t('greeting_afternoon') : t('greeting_evening');
   const active = getActiveStep();
   const dm = state.dailyMissions;
 
@@ -853,29 +853,29 @@ function renderToday() {
     {
       icon: '<span class="flame-anim">🔥</span>',
       value: state.user.streak || 0,
-      unit: (state.user.streak === 1 ? 'day' : 'days') + ' streak',
-      detail: `Best: ${state.user.longestStreak || 0} days`,
+      unit: (state.user.streak === 1 ? t('reel_day') : t('reel_days')) + ' ' + t('reel_streak_suffix'),
+      detail: `${t('reel_best')}: ${state.user.longestStreak || 0} ${t('reel_days')}`,
     },
     {
       icon: lvlIcon(lvl, 'level-icon-reel'),
       value: lvl.title,
-      unit: `Level ${lvl.level}`,
+      unit: `${t('lvl_short')} ${lvl.level}`,
       detail: next
-        ? `${xpInLvl.toLocaleString()} / ${xpNeeded.toLocaleString()} XP → ${next.title}`
-        : 'MAX LEVEL 👑',
+        ? `${xpInLvl.toLocaleString()} / ${xpNeeded.toLocaleString()} XP → ${tLevel(next.level)}`
+        : t('reel_max_level'),
       bar: xpPct,
     },
     {
       icon: '✅',
       value: stepsToday,
-      unit: stepsToday === 1 ? 'step today' : 'steps today',
-      detail: `${state.user.totalStepsCompleted || 0} total all-time`,
+      unit: stepsToday === 1 ? t('reel_step_today') : t('reel_steps_today'),
+      detail: `${state.user.totalStepsCompleted || 0} ${t('reel_all_time')}`,
     },
     {
       icon: '🏆',
       value: questsDone,
-      unit: questsDone === 1 ? 'quest done' : 'quests done',
-      detail: `${state.user.xp.toLocaleString()} XP earned`,
+      unit: questsDone === 1 ? t('reel_quest_done') : t('reel_quests_done'),
+      detail: `${state.user.xp.toLocaleString()} ${t('reel_xp_earned')}`,
     },
   ];
 
@@ -905,7 +905,7 @@ function renderToday() {
 
   let html = `
     <div class="greeting">${greeting} ⚔️</div>
-    <div class="greeting-sub">${active ? 'Your next step is waiting.' : 'Looking strong — add a new quest!'}</div>
+    <div class="greeting-sub">${active ? t('today_next_waiting') : t('today_add_quest_prompt')}</div>
     ${reelHtml}
 
     <div class="quick-add-bar">
@@ -913,7 +913,7 @@ function renderToday() {
         id="quick-add-input"
         class="quick-add-input"
         type="text"
-        placeholder="Quick add a quest..."
+        placeholder="${t('today_quick_add_placeholder')}"
         onkeydown="handleQuickAddKey(event)"
       />
       <button class="quick-add-btn" onclick="quickAddQuest()">+</button>
@@ -923,16 +923,16 @@ function renderToday() {
   if (active) {
     html += `
       <div class="active-step-card">
-        <div class="active-step-label">⚡ Your Next Step</div>
+        <div class="active-step-label">${t('today_active_step_label')}</div>
         <div class="active-step-task">${escHtml(active.task.title)}</div>
-        ${active.step.isStarter ? '<div class="starter-badge">⭐ Starter Step — under 2 min</div>' : ''}
+        ${active.step.isStarter ? `<div class="starter-badge">${t('today_starter_badge')}</div>` : ''}
         <div class="active-step-text">${escHtml(active.step.text)}</div>
         <div class="step-actions">
           <button class="btn-complete" onclick="completeStep('${active.task.id}', '${active.step.id}')">
-            ✓ Done
+            ${t('today_btn_done')}
           </button>
           <button class="btn-focus" onclick="enterFocus('${active.task.id}', '${active.step.id}')">
-            🎯 Focus
+            ${t('today_btn_focus')}
           </button>
         </div>
       </div>
@@ -941,9 +941,9 @@ function renderToday() {
     html += `
       <div class="empty-state">
         <div class="empty-emoji">🗡️</div>
-        <div class="empty-title">No active quests</div>
-        <div class="empty-sub">Add a quest and break it down into tiny steps so you always know exactly what to do next.</div>
-        <button class="btn-primary" onclick="openAddQuest()">+ Add a Quest</button>
+        <div class="empty-title">${t('today_empty_title')}</div>
+        <div class="empty-sub">${t('today_empty_sub')}</div>
+        <button class="btn-primary" onclick="openAddQuest()">${t('today_btn_add')}</button>
       </div>
     `;
   }
@@ -952,35 +952,35 @@ function renderToday() {
   if (activeTasks.length > 0) {
     html += `
       <div class="section-header" style="margin-top:20px">
-        <div class="section-title">Quest Queue</div>
+        <div class="section-title">${t('today_quest_queue')}</div>
       </div>
     `;
-    activeTasks.forEach(t => {
-      const doneCount = t.steps.filter(s => s.completed).length;
-      const total = t.steps.length;
-      const isActive = active && active.task.id === t.id;
+    activeTasks.forEach(task => {
+      const doneCount = task.steps.filter(s => s.completed).length;
+      const total = task.steps.length;
+      const isActive = active && active.task.id === task.id;
       let deadlineMeta = '';
-      if (t.deadline) {
-        const daysLeft = Math.round((new Date(t.deadline) - new Date(todayStr())) / 86400000);
+      if (task.deadline) {
+        const daysLeft = Math.round((new Date(task.deadline) - new Date(todayStr())) / 86400000);
         const cls = daysLeft < 0 ? 'deadline-overdue' : daysLeft <= 3 ? 'deadline-soon' : 'deadline-ok';
-        const label = daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'due today' : `${daysLeft}d left`;
+        const label = daysLeft < 0 ? `${Math.abs(daysLeft)}${t('deadline_overdue')}` : daysLeft === 0 ? t('deadline_today') : `${daysLeft}${t('deadline_left')}`;
         deadlineMeta = ` • <span class="${cls}" style="font-weight:600">📅 ${label}</span>`;
       }
       html += `
         <div class="today-quest-row${isActive ? ' today-quest-active' : ''}">
-          <div class="priority-badge${t.priority == null ? ' no-priority' : ''}">${t.priority != null ? '#' + t.priority : '—'}</div>
+          <div class="priority-badge${task.priority == null ? ' no-priority' : ''}">${task.priority != null ? '#' + task.priority : '—'}</div>
           <div class="today-quest-info">
-            <div class="today-quest-title">${escHtml(t.title)}</div>
-            <div class="today-quest-meta">${doneCount}/${total} steps${deadlineMeta}</div>
+            <div class="today-quest-title">${escHtml(task.title)}</div>
+            <div class="today-quest-meta">${doneCount}/${total} ${t('quests_steps_label')}${deadlineMeta}</div>
           </div>
-          ${isActive ? '<div class="today-quest-arrow">▶ Up Next</div>' : ''}
+          ${isActive ? `<div class="today-quest-arrow">${t('today_up_next')}</div>` : ''}
         </div>
       `;
     });
   }
 
   if (dm) {
-    html += `<div class="card" style="margin-top:20px"><div class="card-title">Daily Missions</div>`;
+    html += `<div class="card" style="margin-top:20px"><div class="card-title">${t('daily_missions')}</div>`;
     html += renderMissionList(dm.missions);
     html += `</div>`;
   }
@@ -988,7 +988,7 @@ function renderToday() {
   const wm = state.weeklyMissions;
   if (wm) {
     const daysLeft = 7 - ((new Date().getDay() + 6) % 7);
-    html += `<div class="card" style="margin-top:12px"><div class="card-title">Weekly Missions <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}d left</span></div>`;
+    html += `<div class="card" style="margin-top:12px"><div class="card-title">${t('weekly_missions')} <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}${t('weekly_days_left')}</span></div>`;
     html += renderMissionList(wm.missions, true);
     html += `</div>`;
   }
@@ -999,11 +999,11 @@ function renderToday() {
 
 // ─── QUESTS VIEW ─────────────────────────────────────
 const SORT_OPTIONS = [
-  { key: 'created',  label: '🕐 Date',      defaultDir: 'desc' },
-  { key: 'priority', label: '# Priority',   defaultDir: 'asc'  },
-  { key: 'deadline', label: '📅 Deadline',  defaultDir: 'asc'  },
-  { key: 'alpha',    label: 'A–Z',          defaultDir: 'asc'  },
-  { key: 'steps',    label: '📋 Steps',     defaultDir: 'desc' },
+  { key: 'created',  labelKey: 'sort_date',      defaultDir: 'desc' },
+  { key: 'priority', labelKey: 'sort_priority',  defaultDir: 'asc'  },
+  { key: 'deadline', labelKey: 'sort_deadline',  defaultDir: 'asc'  },
+  { key: 'alpha',    labelKey: 'sort_alpha',      defaultDir: 'asc'  },
+  { key: 'steps',    labelKey: 'sort_steps',     defaultDir: 'desc' },
 ];
 
 function renderQuests() {
@@ -1013,13 +1013,13 @@ function renderQuests() {
   const sortPills = SORT_OPTIONS.map(o => {
     const isActive = state.questSort === o.key;
     const arrow = isActive ? (state.questSortDir === 'asc' ? ' ↑' : ' ↓') : '';
-    return `<button class="sort-pill${isActive ? ' active' : ''}" onclick="setQuestSort('${o.key}')">${o.label}${arrow}</button>`;
+    return `<button class="sort-pill${isActive ? ' active' : ''}" onclick="setQuestSort('${o.key}')">${t(o.labelKey)}${arrow}</button>`;
   }).join('');
 
   let html = `
     <div class="section-header">
-      <div class="section-title">Active Quests</div>
-      <button class="btn-add" onclick="openAddQuest()">+ New Quest</button>
+      <div class="section-title">${t('quests_active_title')}</div>
+      <button class="btn-add" onclick="openAddQuest()">${t('quests_btn_new')}</button>
     </div>
     <div class="sort-bar">${sortPills}</div>
   `;
@@ -1028,20 +1028,20 @@ function renderQuests() {
     html += `
       <div class="empty-state" style="padding: 28px 20px;">
         <div class="empty-emoji">📜</div>
-        <div class="empty-title">No quests yet</div>
-        <div class="empty-sub">Each quest is a goal broken into small enough steps that starting feels effortless.</div>
-        <button class="btn-primary" onclick="openAddQuest()">+ Add Your First Quest</button>
+        <div class="empty-title">${t('quests_empty_title')}</div>
+        <div class="empty-sub">${t('quests_empty_sub')}</div>
+        <button class="btn-primary" onclick="openAddQuest()">${t('quests_btn_first')}</button>
       </div>
     `;
   } else {
-    active.forEach(t => { html += renderQuestCard(t); });
+    active.forEach(task => { html += renderQuestCard(task); });
   }
 
   if (done.length > 0) {
     html += `
       <div class="completed-section">
         <button class="completed-toggle" onclick="toggleCompleted()">
-          ${state.showCompleted ? '▼' : '▶'} Completed Quests (${done.length})
+          ${state.showCompleted ? '▼' : '▶'} ${t('quests_completed_toggle')} (${done.length})
         </button>
         ${state.showCompleted ? done.map(renderQuestCard).join('') : ''}
       </div>
@@ -1062,7 +1062,7 @@ function renderQuestCard(task) {
   if (expanded) {
     stepsHtml = `<div class="quest-steps open">`;
     if (task.steps.length === 0) {
-      stepsHtml += `<div class="no-steps-hint">No steps yet — add one below</div>`;
+      stepsHtml += `<div class="no-steps-hint">${t('quests_no_steps')}</div>`;
     }
     task.steps.forEach(step => {
       stepsHtml += `
@@ -1071,7 +1071,7 @@ function renderQuestCard(task) {
           <div class="step-check${step.completed ? ' done' : ''}">${step.completed ? '✓' : ''}</div>
           <div class="step-text${step.completed ? ' done' : ''}">
             ${escHtml(step.text)}
-            ${step.isStarter ? '<span class="step-starter-badge">STARTER</span>' : ''}
+            ${step.isStarter ? `<span class="step-starter-badge">${t('quests_starter_badge')}</span>` : ''}
           </div>
         </div>
       `;
@@ -1083,7 +1083,7 @@ function renderQuestCard(task) {
             id="inline-input-${task.id}"
             class="inline-step-input"
             type="text"
-            placeholder="Add a step..."
+            placeholder="${t('quests_add_step_placeholder')}"
             onkeydown="handleInlineStepKey(event, '${task.id}')"
           />
           <button class="inline-add-btn" onclick="addInlineStep('${task.id}')">+</button>
@@ -1104,7 +1104,7 @@ function renderQuestCard(task) {
     const today = todayStr();
     const daysLeft = Math.round((new Date(task.deadline) - new Date(today)) / 86400000);
     const cls = daysLeft < 0 ? 'deadline-overdue' : daysLeft <= 3 ? 'deadline-soon' : 'deadline-ok';
-    const label = daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : daysLeft === 0 ? 'due today' : `${daysLeft}d left`;
+    const label = daysLeft < 0 ? `${Math.abs(daysLeft)}${t('deadline_overdue')}` : daysLeft === 0 ? t('deadline_today') : `${daysLeft}${t('deadline_left')}`;
     return `<span class="deadline-badge ${cls}">📅 ${label}</span>`;
   })();
 
@@ -1124,7 +1124,7 @@ function renderQuestCard(task) {
           <div class="quest-title">${escHtml(task.title)}</div>
           <div class="quest-meta">
             ${task.priority != null ? `<span class="priority-badge-inline">#${task.priority}</span>` : ''}
-            ${diff.label} • ${doneCount}/${total} steps
+            ${tDiff(task.difficulty)} • ${doneCount}/${total} ${t('quests_steps_label')}
             ${deadlineBadge}
           </div>
           ${createdLabel ? `<div class="quest-created">${createdLabel}</div>` : ''}
@@ -1161,9 +1161,9 @@ function confirmUncheck(taskId, stepId) {
   const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
   const xpLost = XP_PER_STEP + (taskWillUncomplete ? diff.bonus : 0);
 
-  let bodyHtml = `You will lose <strong>-${xpLost} XP</strong>.`;
+  let bodyHtml = `${t('uncheck_lose_xp')} <strong>-${xpLost} XP</strong>.`;
   if (taskWillUncomplete) {
-    bodyHtml += `<br>This will also re-open the quest <em>${escHtml(task.title)}</em> and remove its completion bonus.`;
+    bodyHtml += `<br>${t('uncheck_reopen')} <em>${escHtml(task.title)}</em> ${t('uncheck_reopen_suffix')}`;
   }
 
   document.getElementById('uncheck-body').innerHTML = bodyHtml;
@@ -1221,7 +1221,7 @@ function _doUncheck(taskId, stepId) {
   }
 
   logActivity('step_revert', `↩️ Reverted: "${step.text}" — ${task.title}`, -xpLost);
-  deductXP(xpLost, 'step reverted');
+  deductXP(xpLost, t('toast_step_reverted'));
   renderCurrentView();
 }
 
@@ -1270,7 +1270,7 @@ function renderActivityLogItems(query) {
     return e.label.toLowerCase().includes(q) || dateStr.includes(q) || isoStr.includes(q);
   }) : log;
   if (!filtered.length) {
-    list.innerHTML = `<div class="activity-log-empty">${q ? 'No matching entries' : 'No activity recorded yet'}</div>`;
+    list.innerHTML = `<div class="activity-log-empty">${q ? t('stats_activity_no_match') : t('stats_activity_empty')}</div>`;
     return;
   }
   const TYPE_ICONS = { step: '✅', quest: '⚔️', mission: '🎯', level_up: '🆙', streak: '🔥', focus: '🔮', step_revert: '↩️' };
@@ -1326,63 +1326,63 @@ function renderStats() {
     <div class="stats-hero">
       <div class="stats-level-num">${lvl.level}</div>
       <div class="stats-level-icon">${lvlIcon(lvl, 'level-icon-lg')}</div>
-      <div class="stats-level-title">${lvl.title}</div>
+      <div class="stats-level-title">${tLevel(lvl.level)}</div>
       <div class="stats-xp-sub">
-        ${state.user.xp.toLocaleString()} XP total
-        ${next ? `<br>${xpToNext.toLocaleString()} XP to ${next.title}` : '<br>MAX LEVEL 👑'}
+        ${state.user.xp.toLocaleString()} ${t('stats_xp_total')}
+        ${next ? `<br>${xpToNext.toLocaleString()} ${t('stats_xp_to')} ${tLevel(next.level)}` : `<br>${t('stats_max_level')}`}
       </div>
     </div>
 
     <div class="stats-grid">
       <div class="stat-box">
         <div class="stat-value" style="color:var(--orange)">🔥 ${state.user.streak}</div>
-        <div class="stat-label">Day Streak</div>
+        <div class="stat-label">${t('stats_day_streak')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value">🏆 ${state.user.longestStreak}</div>
-        <div class="stat-label">Best Streak</div>
+        <div class="stat-label">${t('stats_best_streak')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--green)">✅ ${state.user.totalTasksCompleted}</div>
-        <div class="stat-label">Quests Done</div>
+        <div class="stat-label">${t('stats_quests_done')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--purple-light)">👣 ${state.user.totalStepsCompleted}</div>
-        <div class="stat-label">Steps Taken</div>
+        <div class="stat-label">${t('stats_steps_taken')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--gold)">🎯 ${state.user.totalFocusSessions || 0}</div>
-        <div class="stat-label">Focus Sessions</div>
+        <div class="stat-label">${t('stats_focus_sessions')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--purple-light)">⚔️ ${state.user.totalMissionsCompleted || 0}</div>
-        <div class="stat-label">Missions Done</div>
+        <div class="stat-label">${t('stats_missions_done')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--orange)">🚀 ${state.user.bestDaySteps || 0}</div>
-        <div class="stat-label">Best Day Steps</div>
+        <div class="stat-label">${t('stats_best_day')}</div>
       </div>
       <div class="stat-box">
         <div class="stat-value" style="color:var(--green)">📅 ${(state.user.allTimeActiveDates || []).length}</div>
-        <div class="stat-label">Total Active Days</div>
+        <div class="stat-label">${t('stats_active_days')}</div>
       </div>
     </div>
 
     <div class="card">
-      <div class="card-title">This Week's XP</div>
+      <div class="card-title">${t('stats_weekly_xp')}</div>
       <div style="font-size:36px;font-weight:900;color:var(--gold);text-align:center;padding:8px 0;">${(state.user.weeklyXpEarned || 0).toLocaleString()} <span style="font-size:16px;color:var(--text2);font-weight:600">XP</span></div>
-      <div style="font-size:12px;color:var(--text2);text-align:center;">Resets every Monday</div>
+      <div style="font-size:12px;color:var(--text2);text-align:center;">${t('stats_weekly_reset')}</div>
     </div>
 
     <div class="card">
-      <div class="card-title">Quest Breakdown</div>
+      <div class="card-title">${t('stats_quest_breakdown')}</div>
       ${(() => {
         const allTasks = state.tasks;
-        const done = allTasks.filter(t => t.completedAt).length;
-        const inProg = allTasks.filter(t => !t.completedAt && t.steps.some(s => s.completed)).length;
-        const notStarted = allTasks.filter(t => !t.completedAt && !t.steps.some(s => s.completed)).length;
+        const done = allTasks.filter(task => task.completedAt).length;
+        const inProg = allTasks.filter(task => !task.completedAt && task.steps.some(s => s.completed)).length;
+        const notStarted = allTasks.filter(task => !task.completedAt && !task.steps.some(s => s.completed)).length;
         const total = allTasks.length;
-        if (total === 0) return '<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">No quests yet</div>';
+        if (total === 0) return `<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">${t('stats_no_quests')}</div>`;
         const donePct = Math.round((done / total) * 100);
         const inProgPct = Math.round((inProg / total) * 100);
         const notStartedPct = 100 - donePct - inProgPct;
@@ -1393,24 +1393,24 @@ function renderStats() {
             ${notStartedPct > 0 ? `<div class="qb-seg qb-none" style="width:${notStartedPct}%"></div>` : ''}
           </div>
           <div class="quest-breakdown-legend">
-            <div class="qb-legend-item"><span class="qb-dot qb-done"></span><span>${done} Done</span></div>
-            <div class="qb-legend-item"><span class="qb-dot qb-inprog"></span><span>${inProg} In Progress</span></div>
-            <div class="qb-legend-item"><span class="qb-dot qb-none"></span><span>${notStarted} Not Started</span></div>
+            <div class="qb-legend-item"><span class="qb-dot qb-done"></span><span>${done} ${t('stats_done')}</span></div>
+            <div class="qb-legend-item"><span class="qb-dot qb-inprog"></span><span>${inProg} ${t('stats_in_progress')}</span></div>
+            <div class="qb-legend-item"><span class="qb-dot qb-none"></span><span>${notStarted} ${t('stats_not_started')}</span></div>
           </div>
         `;
       })()}
     </div>
 
     <div class="card">
-      <div class="card-title">Last 7 Days</div>
+      <div class="card-title">${t('stats_last_7_days')}</div>
       <div class="streak-calendar">${calHtml}</div>
     </div>
 
     <div class="card">
-      <div class="card-title">Level Progress</div>
+      <div class="card-title">${t('stats_level_progress')}</div>
       <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;">
-        <span style="color:var(--text2)">Lvl ${lvl.level} — ${lvl.title}</span>
-        ${next ? `<span style="color:var(--text2)">Lvl ${next.level} — ${next.title}</span>` : '<span style="color:var(--gold)">MAX ✓</span>'}
+        <span style="color:var(--text2)">${t('lvl_short')} ${lvl.level} — ${tLevel(lvl.level)}</span>
+        ${next ? `<span style="color:var(--text2)">${t('lvl_short')} ${next.level} — ${tLevel(next.level)}</span>` : `<span style="color:var(--gold)">${t('stats_level_max')}</span>`}
       </div>
       <div class="progress-bar" style="height:12px;">
         <div class="progress-fill fill-quest" style="width:${pct}%;background:linear-gradient(90deg,var(--purple),var(--gold))"></div>
@@ -1419,11 +1419,11 @@ function renderStats() {
     </div>
 
     <div class="card">
-      <div class="card-title">Level Accomplishments</div>
+      <div class="card-title">${t('stats_accomplishments')}</div>
       ${(() => {
         const history = (state.user.levelHistory || []).slice().sort((a, b) => b.level - a.level);
         if (history.length === 0) {
-          return '<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">No level-ups recorded yet</div>';
+          return `<div style="text-align:center;color:var(--text3);font-size:13px;padding:12px 0;">${t('stats_no_levelups')}</div>`;
         }
         return history.map(h => {
           const d = new Date(h.achievedAt);
@@ -1433,8 +1433,8 @@ function renderStats() {
             <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);">
               <span class="level-icon tier-${h.tier}" style="font-size:22px;flex-shrink:0;">${h.icon}</span>
               <div style="flex:1;min-width:0;">
-                <div style="font-weight:700;font-size:14px;">Lvl ${h.level} — ${h.title}</div>
-                <div style="font-size:12px;color:var(--text3);">${date} at ${time}</div>
+                <div style="font-weight:700;font-size:14px;">${t('lvl_short')} ${h.level} — ${tLevel(h.level)}</div>
+                <div style="font-size:12px;color:var(--text3);">${date} ${t('stats_at')} ${time}</div>
               </div>
             </div>
           `;
@@ -1443,28 +1443,28 @@ function renderStats() {
     </div>
 
     <div class="card">
-      <div class="card-title">Data</div>
+      <div class="card-title">${t('stats_data')}</div>
       <p style="font-size:13px;color:var(--text2);margin-bottom:12px;">
-        Export your data to back it up or move it to another device.
+        ${t('stats_data_sub')}
       </p>
       <div class="export-row">
-        <button class="btn-export" onclick="exportData()">⬇️ Export JSON</button>
-        <button class="btn-export" onclick="importData()">⬆️ Import JSON</button>
+        <button class="btn-export" onclick="exportData()">${t('stats_export')}</button>
+        <button class="btn-export" onclick="importData()">${t('stats_import')}</button>
       </div>
       <div class="export-row" style="margin-top:8px;">
-        <button class="btn-export" onclick="saveToGoogleDrive()">☁️ Save to Drive</button>
-        <button class="btn-export" onclick="loadFromGoogleDrive()">☁️ Load from Drive</button>
+        <button class="btn-export" onclick="saveToGoogleDrive()">${t('stats_drive_save')}</button>
+        <button class="btn-export" onclick="loadFromGoogleDrive()">${t('stats_drive_load')}</button>
       </div>
-      ${_driveAutoEnabled ? '<div style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;">✅ Drive autosave active — syncs after each action</div>' : '<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">Sign in above to enable Drive autosave</div>'}
+      ${_driveAutoEnabled ? `<div style="font-size:12px;color:var(--green);text-align:center;margin-top:8px;">${t('stats_drive_active')}</div>` : `<div style="font-size:12px;color:var(--text3);text-align:center;margin-top:8px;">${t('stats_drive_inactive')}</div>`}
     </div>
 
     <div class="card activity-log-card">
       <button class="activity-log-header" onclick="toggleActivityLog()">
-        <span class="card-title" style="margin:0">📋 Activity Log</span>
+        <span class="card-title" style="margin:0">${t('stats_activity_log')}</span>
         <span id="activity-log-toggle-icon" class="activity-log-chevron">▾</span>
       </button>
       <div id="activity-log-content" class="activity-log-content hidden">
-        <input id="activity-log-search" type="text" class="activity-log-search" placeholder="Search activity..." oninput="filterActivityLog()" />
+        <input id="activity-log-search" type="text" class="activity-log-search" placeholder="${t('stats_activity_search')}" oninput="filterActivityLog()" />
         <div id="activity-log-list" class="activity-log-list"></div>
       </div>
     </div>
@@ -1706,15 +1706,15 @@ function renderModal() {
 
   const tabsHtml = isEdit ? '' : `
     <div class="modal-tabs">
-      <button class="modal-tab active">Single Quest</button>
-      <button class="modal-tab" onclick="switchModalTab('bulk')">Bulk Add</button>
+      <button class="modal-tab active">${t('modal_tab_single')}</button>
+      <button class="modal-tab" onclick="switchModalTab('bulk')">${t('modal_tab_bulk')}</button>
     </div>
   `;
 
   const diffHtml = Object.entries(DIFFICULTIES).map(([k, d]) => `
     <div class="diff-opt${newQ.difficulty === k ? ' selected' : ''}" onclick="selectDiff('${k}')">
       <div class="diff-opt-icon">${d.icon}</div>
-      <div class="diff-opt-name">${d.label}</div>
+      <div class="diff-opt-name">${tDiff(k)}</div>
       <div class="diff-opt-xp">+${d.bonus} XP</div>
     </div>
   `).join('');
@@ -1726,41 +1726,41 @@ function renderModal() {
       <input
         class="step-input"
         type="text"
-        placeholder="${i === 0 ? 'Easiest possible first action...' : 'Next step...'}"
+        placeholder="${i === 0 ? t('modal_step_placeholder_first') : t('modal_step_placeholder_next')}"
         value="${escHtml(s)}"
         oninput="newQ.steps[${i}] = this.value"
         onkeydown="handleStepKey(event, ${i})"
       />
       ${i >= 1 ? `<button class="step-del" onclick="removeStep(${i})">✕</button>` : ''}
     </div>
-    ${i === 0 ? '<div class="step-hint">⭐ Make this so easy you can\'t say no (under 2 min)</div>' : ''}
+    ${i === 0 ? `<div class="step-hint">${t('modal_step_hint')}</div>` : ''}
   `).join('');
 
   document.getElementById('modal').innerHTML = `
     ${tabsHtml}
-    <h2>${isEdit ? 'Edit Quest ✏️' : 'New Quest ⚔️'}</h2>
-    <p class="modal-sub">${isEdit ? 'Update your quest details.' : 'Name it now, break it down later.'}</p>
+    <h2>${isEdit ? t('modal_title_edit') : t('modal_title_new')}</h2>
+    <p class="modal-sub">${isEdit ? t('modal_sub_edit') : t('modal_sub_new')}</p>
 
     <div class="form-group">
-      <label class="form-label">Quest Name</label>
+      <label class="form-label">${t('modal_label_name')}</label>
       <input
         id="q-title"
         class="form-input"
         type="text"
-        placeholder="What do you need to accomplish?"
+        placeholder="${t('modal_placeholder_name')}"
         value="${escHtml(newQ.title)}"
         oninput="newQ.title = this.value"
       />
     </div>
 
     <div class="form-group">
-      <label class="form-label">Difficulty</label>
+      <label class="form-label">${t('modal_label_difficulty')}</label>
       <div class="diff-picker">${diffHtml}</div>
     </div>
 
     <div class="modal-row-2">
       <div class="form-group">
-        <label class="form-label">Priority # <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <label class="form-label">${t('modal_label_priority')} <span style="color:var(--text3);font-weight:400">${t('modal_optional')}</span></label>
         <input
           id="q-priority"
           class="form-input priority-input"
@@ -1773,7 +1773,7 @@ function renderModal() {
         />
       </div>
       <div class="form-group">
-        <label class="form-label">Deadline <span style="color:var(--text3);font-weight:400">(optional)</span></label>
+        <label class="form-label">${t('modal_label_deadline')} <span style="color:var(--text3);font-weight:400">${t('modal_optional')}</span></label>
         <input
           id="q-deadline"
           class="form-input deadline-input"
@@ -1785,14 +1785,14 @@ function renderModal() {
     </div>
 
     <div class="form-group">
-      <label class="form-label">Steps <span style="color:var(--text3);font-weight:400">(min 2)</span></label>
+      <label class="form-label">${t('modal_label_steps')} <span style="color:var(--text3);font-weight:400">${t('modal_label_steps_hint')}</span></label>
       <div id="steps-list">${stepsHtml}</div>
-      <button class="btn-add-step" onclick="addModalStep()">+ Add another step</button>
+      <button class="btn-add-step" onclick="addModalStep()">${t('modal_btn_add_step')}</button>
     </div>
 
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="${isEdit ? 'saveEditQuest()' : 'saveQuest()'}">${isEdit ? 'Save Changes ✓' : 'Save Quest ⚔️'}</button>
+      <button class="btn-cancel" onclick="closeModal()">${t('modal_btn_cancel')}</button>
+      <button class="btn-save" onclick="${isEdit ? 'saveEditQuest()' : 'saveQuest()'}">${isEdit ? t('modal_btn_save_edit') : t('modal_btn_save')}</button>
     </div>
   `;
 }
@@ -1800,13 +1800,13 @@ function renderModal() {
 function renderBulkModal() {
   document.getElementById('modal').innerHTML = `
     <div class="modal-tabs">
-      <button class="modal-tab" onclick="switchModalTab('add')">Single Quest</button>
-      <button class="modal-tab active">Bulk Add</button>
+      <button class="modal-tab" onclick="switchModalTab('add')">${t('modal_tab_single')}</button>
+      <button class="modal-tab active">${t('modal_tab_bulk')}</button>
     </div>
-    <h2>Bulk Add Quests ⚔️</h2>
-    <p class="modal-sub">One quest per line. Add steps to each one later.</p>
+    <h2>${t('bulk_title')}</h2>
+    <p class="modal-sub">${t('bulk_sub')}</p>
     <div class="form-group">
-      <label class="form-label">Quest Names</label>
+      <label class="form-label">${t('bulk_label')}</label>
       <textarea
         id="bulk-input"
         class="form-input bulk-textarea"
@@ -1814,8 +1814,8 @@ function renderBulkModal() {
       ></textarea>
     </div>
     <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
-      <button class="btn-save" onclick="saveBulkQuests()">Add All Quests ⚔️</button>
+      <button class="btn-cancel" onclick="closeModal()">${t('modal_btn_cancel')}</button>
+      <button class="btn-save" onclick="saveBulkQuests()">${t('bulk_btn')}</button>
     </div>
   `;
 }
@@ -1862,9 +1862,9 @@ function handleStepKey(e, i) {
 
 function saveQuest() {
   syncModalSteps();
-  if (!newQ.title.trim()) { toast('⚠️ Give your quest a name!'); return; }
+  if (!newQ.title.trim()) { toast(t('toast_give_name')); return; }
   const validSteps = newQ.steps.map(s => s.trim()).filter(Boolean);
-  if (validSteps.length < 2) { toast('⚠️ Add at least 2 steps!'); return; }
+  if (validSteps.length < 2) { toast(t('toast_add_steps')); return; }
 
   const task = {
     id: uid(),
@@ -1890,15 +1890,15 @@ function saveQuest() {
   updateWeeklyMissions('newTask');
   save();
   closeModal();
-  toast('⚔️ Quest added!');
+  toast(t('toast_quest_added'));
   showView('today');
 }
 
 function saveEditQuest() {
   syncModalSteps();
-  if (!newQ.title.trim()) { toast('⚠️ Give your quest a name!'); return; }
+  if (!newQ.title.trim()) { toast(t('toast_give_name')); return; }
 
-  const task = state.tasks.find(t => t.id === editingTaskId);
+  const task = state.tasks.find(tk => tk.id === editingTaskId);
   if (!task) return;
 
   const validSteps = newQ.steps.map(s => s.trim()).filter(Boolean);
@@ -1930,7 +1930,7 @@ function saveEditQuest() {
 
   save();
   closeModal();
-  toast('✓ Quest updated!');
+  toast(t('toast_quest_updated'));
   renderCurrentView();
 }
 
@@ -1940,7 +1940,7 @@ function duplicateQuest(taskId) {
 
   const copy = {
     id: uid(),
-    title: task.title + ' (copy)',
+    title: task.title + t('quest_copy_suffix'),
     difficulty: task.difficulty,
     priority: task.priority != null ? task.priority : null,
     deadline: task.deadline || null,
@@ -1961,14 +1961,14 @@ function duplicateQuest(taskId) {
   updateMissions('newTask');
   updateWeeklyMissions('newTask');
   save();
-  toast('📋 Quest duplicated!');
+  toast(t('toast_quest_duplicated'));
   renderCurrentView();
 }
 
 function saveBulkQuests() {
   const raw = document.getElementById('bulk-input')?.value || '';
   const titles = raw.split('\n').map(l => l.trim()).filter(Boolean);
-  if (titles.length === 0) { toast('⚠️ Enter at least one quest name!'); return; }
+  if (titles.length === 0) { toast(t('toast_enter_quest')); return; }
 
   titles.forEach(title => {
     state.tasks.unshift({
@@ -1986,7 +1986,7 @@ function saveBulkQuests() {
   updateWeeklyMissions('newTask');
   save();
   closeModal();
-  toast(`⚔️ ${titles.length} quest${titles.length > 1 ? 's' : ''} added!`);
+  toast(titles.length === 1 ? t('toast_quests_added_one') : t('toast_quests_added_many').replace('{n}', titles.length));
   showView('quests');
 }
 
@@ -2040,7 +2040,7 @@ function quickAddQuest() {
   updateWeeklyMissions('newTask');
   save();
   input.value = '';
-  toast('⚔️ Quest added!');
+  toast(t('toast_quest_added'));
   renderCurrentView();
 }
 
@@ -2070,22 +2070,22 @@ function renderSidePanel() {
         <div class="side-quest-card" style="cursor:default">
           <div class="side-quest-header">
             <span>${m.completed ? '✅' : (weekly ? '🗓️' : '🎯')}</span>
-            <span class="side-quest-title">${escHtml(m.title)}</span>
+            <span class="side-quest-title">${escHtml(tMission(m.id, 'title', weekly) || m.title)}</span>
             <span style="font-size:11px;color:var(--gold);font-weight:700;white-space:nowrap">${m.completed ? '✓' : '+' + m.xp + ' XP'}</span>
           </div>
           ${!m.completed ? `<div class="mission-progress-bar" style="margin-top:6px"><div class="mission-progress-fill${weekly ? ' weekly' : ''}" style="width:${pct}%"></div></div>` : ''}
-          <div class="side-quest-meta">${escHtml(m.desc)}</div>
+          <div class="side-quest-meta">${escHtml(tMission(m.id, 'desc', weekly) || m.desc)}</div>
         </div>
       `;
     }).join('');
 
     if (dm) {
-      html += '<div class="side-panel-title">Daily Missions</div>';
+      html += `<div class="side-panel-title">${t('side_daily_missions')}</div>`;
       html += renderSideMissions(dm.missions);
     }
     if (wm) {
       const daysLeft = 7 - ((new Date().getDay() + 6) % 7);
-      html += `<div class="side-panel-title" style="margin-top:14px">Weekly Missions <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}d left</span></div>`;
+      html += `<div class="side-panel-title" style="margin-top:14px">${t('side_weekly_missions')} <span style="font-size:11px;color:var(--text3);font-weight:400">${daysLeft}${t('weekly_days_left')}</span></div>`;
       html += renderSideMissions(wm.missions, true);
     }
 
@@ -2096,28 +2096,28 @@ function renderSidePanel() {
   const active = state.tasks.filter(t => !t.completedAt);
   if (active.length === 0) {
     panel.innerHTML = `
-      <div class="side-panel-title">Active Quests</div>
-      <div class="side-panel-empty">No active quests yet.<br>Add one to get started!</div>
+      <div class="side-panel-title">${t('side_active_quests')}</div>
+      <div class="side-panel-empty">${t('side_no_quests')}</div>
     `;
     return;
   }
 
-  let html = '<div class="side-panel-title">Active Quests</div>';
-  active.forEach(t => {
-    const diff = DIFFICULTIES[t.difficulty] || DIFFICULTIES.quest;
-    const done = t.steps.filter(s => s.completed).length;
-    const total = t.steps.length;
+  let html = `<div class="side-panel-title">${t('side_active_quests')}</div>`;
+  active.forEach(task => {
+    const diff = DIFFICULTIES[task.difficulty] || DIFFICULTIES.quest;
+    const done = task.steps.filter(s => s.completed).length;
+    const total = task.steps.length;
     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
     html += `
-      <div class="side-quest-card" onclick="openQuestInPanel('${t.id}')">
+      <div class="side-quest-card" onclick="openQuestInPanel('${task.id}')">
         <div class="side-quest-header">
           <span>${diff.icon}</span>
-          <span class="side-quest-title">${escHtml(t.title)}</span>
+          <span class="side-quest-title">${escHtml(task.title)}</span>
         </div>
         <div class="progress-bar" style="height:4px;margin-top:6px">
           <div class="progress-fill ${diff.fill}" style="width:${pct}%"></div>
         </div>
-        <div class="side-quest-meta">${done}/${total} steps • ${diff.label}</div>
+        <div class="side-quest-meta">${done}/${total} ${t('quests_steps_label')} • ${tDiff(task.difficulty)}</div>
       </div>
     `;
   });
@@ -2131,12 +2131,12 @@ function updateHeader() {
   const pct  = xpPercent(state.user.xp);
 
   document.getElementById('streak-num').textContent = state.user.streak;
-  document.getElementById('level-pill').innerHTML = `${lvlIcon(lvl)} Lvl ${lvl.level} · ${lvl.title}`;
+  document.getElementById('level-pill').innerHTML = `${lvlIcon(lvl)} ${t('lvl_short')} ${lvl.level} · ${tLevel(lvl.level)}`;
   document.getElementById('xp-fill').style.width = pct + '%';
 
   const xpHtml = next
-    ? `${state.user.xp.toLocaleString()} / ${next.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${lvl.title}`
-    : `${state.user.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${lvl.title} 👑`;
+    ? `${state.user.xp.toLocaleString()} / ${next.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${tLevel(lvl.level)}`
+    : `${state.user.xp.toLocaleString()} XP &bull; ${lvlIcon(lvl)} ${tLevel(lvl.level)} 👑`;
   document.getElementById('xp-text').innerHTML = xpHtml;
 }
 
@@ -2154,3 +2154,6 @@ function toast(msg) {
 load();
 updateHeader();
 showView('today');
+_applyStaticTranslations();
+const _langBtn = document.getElementById('lang-toggle');
+if (_langBtn) _langBtn.textContent = getLang().toUpperCase();
